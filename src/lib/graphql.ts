@@ -303,12 +303,15 @@ export async function getBackupFromWordPress(): Promise<{ customers: any[]; sett
     contentText = contentText.slice(3, -4);
   }
   // Decode HTML entities if WordPress encoded quotes
-  // contentText = contentText
-  //   .replace(/&quot;/g, '"')
-  //   .replace(/&#39;/g, "'")
-  //   .replace(/&lt;/g, '<')
-  //   .replace(/&gt;/g, '>')
-  //   .replace(/&amp;/g, '&');
+  contentText = contentText
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&#8243;/g, '"')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 
   try {
     return JSON.parse(contentText);
