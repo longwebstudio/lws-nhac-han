@@ -1,0 +1,6 @@
+{
+  "name": "Lws nhắc hạn",
+  "description": "Sổ thu công nghệ - Quản lý, tra cứu và tự động nhắc hạn đóng tiền BHXH, BHYT dành cho điểm thu và đại lý bảo hiểm.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
