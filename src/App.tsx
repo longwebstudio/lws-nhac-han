@@ -60,17 +60,22 @@ export default function App() {
       if (storedSettings) {
         const parsed = JSON.parse(storedSettings);
         // Migrate old default settings to current request
+        const merged = {
+          baseSalaryBHYT: INITIAL_SETTINGS.baseSalaryBHYT,
+          povertyStandardBHXH: INITIAL_SETTINGS.povertyStandardBHXH,
+          supportPoorBHXH: INITIAL_SETTINGS.supportPoorBHXH,
+          supportNearPoorBHXH: INITIAL_SETTINGS.supportNearPoorBHXH,
+          supportOtherBHXH: INITIAL_SETTINGS.supportOtherBHXH,
+          autoBackupWordPress: INITIAL_SETTINGS.autoBackupWordPress,
+          lastAutoBackupDate: INITIAL_SETTINGS.lastAutoBackupDate,
+          ...parsed
+        };
         if (parsed.agencyName === 'Bảo Hiểm An Bình - Đại Lý Long Web Studio' || parsed.agentPhone === '0987654321') {
-          const updated = {
-            ...parsed,
-            agencyName: INITIAL_SETTINGS.agencyName,
-            agentPhone: INITIAL_SETTINGS.agentPhone
-          };
-          setSettings(updated);
-          localStorage.setItem('lws_settings', JSON.stringify(updated));
-        } else {
-          setSettings(parsed);
+          merged.agencyName = INITIAL_SETTINGS.agencyName;
+          merged.agentPhone = INITIAL_SETTINGS.agentPhone;
         }
+        setSettings(merged);
+        localStorage.setItem('lws_settings', JSON.stringify(merged));
       } else {
         setSettings(INITIAL_SETTINGS);
         localStorage.setItem('lws_settings', JSON.stringify(INITIAL_SETTINGS));
@@ -79,6 +84,41 @@ export default function App() {
       console.error('Error loading data from local storage:', e);
     }
   }, []);
+
+  // Daily auto backup to WordPress
+  useEffect(() => {
+    if (!wpUser || !settings.autoBackupWordPress) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    if (settings.lastAutoBackupDate === today) return;
+
+    const isRunning = sessionStorage.getItem('lws_auto_backing_up');
+    if (isRunning === 'true') return;
+    sessionStorage.setItem('lws_auto_backing_up', 'true');
+
+    const runAutoBackup = async () => {
+      try {
+        const updatedSettings: UserSettings = {
+          ...settings,
+          lastAutoBackupDate: today,
+        };
+        // Update state and storage immediately to block other triggers
+        setSettings(updatedSettings);
+        localStorage.setItem('lws_settings', JSON.stringify(updatedSettings));
+
+        await saveBackupToWordPress({ customers, settings: updatedSettings });
+        console.log('Daily automatic backup to WordPress completed successfully.');
+      } catch (err) {
+        console.error('Daily automatic backup to WordPress failed:', err);
+      } finally {
+        sessionStorage.removeItem('lws_auto_backing_up');
+      }
+    };
+
+    // Delay slightly to let resources settle on startup
+    const timer = setTimeout(runAutoBackup, 4000);
+    return () => clearTimeout(timer);
+  }, [wpUser, settings.autoBackupWordPress, settings.lastAutoBackupDate, customers]);
 
   // helpers to persist changes
   const saveCustomersToStorage = (updatedCustomers: Customer[]) => {
@@ -124,8 +164,36 @@ export default function App() {
   const handleBulkImport = (newCustomers: Customer[]) => {
     const updated = [...customers];
     
+    const get10DigitKey = (cust: Customer) => {
+      const bhxh = cust.insuranceCodeBHXH ? cust.insuranceCodeBHXH.trim().replace(/\s/g, '') : '';
+      if (bhxh && bhxh.length >= 10) return bhxh.slice(-10);
+      const bhyt = cust.insuranceCode ? cust.insuranceCode.trim().replace(/\s/g, '') : '';
+      if (bhyt && bhyt.length >= 10) return bhyt.slice(-10);
+      return bhxh || bhyt;
+    };
+
+    // Loại bỏ toàn bộ biên lai cũ có cùng bienLaiId trước khi import biên lai mới (Tính duy nhất và ghi đè)
+    newCustomers.forEach(newCust => {
+      if (newCust.paymentHistory && newCust.paymentHistory.length > 0) {
+        newCust.paymentHistory.forEach(newPay => {
+          if (newPay.bienLaiId) {
+            updated.forEach(c => {
+              if (c.paymentHistory) {
+                c.paymentHistory = c.paymentHistory.filter(oldPay => oldPay.bienLaiId !== newPay.bienLaiId);
+              }
+            });
+          }
+        });
+      }
+    });
+
     newCustomers.forEach(newCust => {
       const matchIndex = updated.findIndex(c => {
+        const new10 = get10DigitKey(newCust);
+        const existing10 = get10DigitKey(c);
+        if (new10 && existing10 && new10 === existing10) {
+          return true;
+        }
         if (newCust.cccd && c.cccd && newCust.cccd.trim() === c.cccd.trim()) {
           return true;
         }
@@ -151,15 +219,21 @@ export default function App() {
         const mergedInsuranceCode = existing.insuranceCode || newCust.insuranceCode;
         const mergedInsuranceCodeBHXH = existing.insuranceCodeBHXH || newCust.insuranceCodeBHXH;
         const mergedHasBHXH = existing.hasBHXH || newCust.hasBHXH;
+        const mergedBirthday = existing.birthday || newCust.birthday;
+        const mergedGender = existing.gender || newCust.gender;
+        const mergedAddress = existing.address || newCust.address;
         
         // Append history without duplicates
         const updatedHistory = [...(existing.paymentHistory || [])];
         if (newCust.paymentHistory && newCust.paymentHistory.length > 0) {
           newCust.paymentHistory.forEach(newPay => {
-            const isDup = updatedHistory.some(oldPay => 
-              oldPay.paymentDate === newPay.paymentDate && 
-              Math.abs(oldPay.amountPaid - newPay.amountPaid) < 1 // check if same amount & date
-            );
+            const isDup = updatedHistory.some(oldPay => {
+              if (newPay.bienLaiId && oldPay.bienLaiId) {
+                return oldPay.bienLaiId === newPay.bienLaiId;
+              }
+              return oldPay.paymentDate === newPay.paymentDate && 
+                Math.abs(oldPay.amountPaid - newPay.amountPaid) < 1; // check if same amount & date
+            });
             if (!isDup) {
               updatedHistory.unshift(newPay); // Prepend new payments
             }
@@ -169,17 +243,15 @@ export default function App() {
         // Sort paymentHistory descending by date
         updatedHistory.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
-        // Update expiry dates
+        // Update expiry dates (Do not overwrite existing non-empty expiry dates during import)
         let mergedExpiryDate = existing.expiryDate;
         let mergedExpiryDateBHXH = existing.expiryDateBHXH;
         
-        if (newCust.expiryDate && newCust.expiryDate > existing.expiryDate) {
+        if (!mergedExpiryDate && newCust.expiryDate) {
           mergedExpiryDate = newCust.expiryDate;
         }
-        if (newCust.expiryDateBHXH) {
-          if (!existing.expiryDateBHXH || newCust.expiryDateBHXH > existing.expiryDateBHXH) {
-            mergedExpiryDateBHXH = newCust.expiryDateBHXH;
-          }
+        if (!mergedExpiryDateBHXH && newCust.expiryDateBHXH) {
+          mergedExpiryDateBHXH = newCust.expiryDateBHXH;
         }
 
         updated[matchIndex] = {
@@ -191,6 +263,9 @@ export default function App() {
           hasBHXH: mergedHasBHXH,
           expiryDate: mergedExpiryDate,
           expiryDateBHXH: mergedExpiryDateBHXH,
+          birthday: mergedBirthday,
+          gender: mergedGender,
+          address: mergedAddress,
           paymentHistory: updatedHistory,
           status: 'active',
           notes: existing.notes 

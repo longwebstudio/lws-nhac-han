@@ -20,8 +20,25 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    if (name === 'bhxhCommissionRate' || name === 'bhytCommissionRate') {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.currentTarget as HTMLInputElement).checked;
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+      return;
+    }
+    const numericFields = [
+      'bhxhCommissionRate', 
+      'bhytCommissionRate', 
+      'baseSalaryBHYT', 
+      'povertyStandardBHXH', 
+      'supportPoorBHXH', 
+      'supportNearPoorBHXH', 
+      'supportOtherBHXH'
+    ];
+    if (numericFields.includes(name)) {
       setFormData(prev => ({
         ...prev,
         [name]: parseFloat(value) || 0
@@ -145,6 +162,111 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
                     className="w-full text-sm px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 focus:bg-slate-950 pr-8 transition-all text-white"
                   />
                   <span className="absolute right-3 top-2.5 text-slate-500 text-sm font-medium">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Automatic Daily Backup Option */}
+          <div className="space-y-4 pt-2">
+            <h4 className="text-sm font-bold text-white border-l-4 border-indigo-500 pl-2">Sao Lưu Dữ Liệu Lên WordPress</h4>
+            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850 space-y-3">
+              <label id="auto-backup-checkbox" className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  name="autoBackupWordPress"
+                  checked={!!formData.autoBackupWordPress}
+                  onChange={handleChange}
+                  className="mt-1 accent-indigo-500 rounded border-slate-800 bg-slate-950 text-indigo-500 focus:ring-0 focus:ring-offset-0 h-4 w-4"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-white">Tự động sao lưu dữ liệu lên WordPress hàng ngày</span>
+                  <p className="text-xs text-slate-400">
+                    Khi kích hoạt và đã đăng nhập tài khoản WordPress, ứng dụng sẽ tự động sao lưu đồng bộ dữ liệu lên cloud định kỳ mỗi ngày một lần khi bạn truy cập. Tránh rủi ro bị mất dữ liệu thiết bị.
+                  </p>
+                </div>
+              </label>
+              {formData.lastAutoBackupDate && (
+                <div className="text-[10px] text-slate-500 flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded w-fit italic font-mono">
+                  ● Lần tự động sao lưu gần nhất: {formData.lastAutoBackupDate}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Premium Pricing Standards & Government Support */}
+          <div className="space-y-4 pt-2">
+            <h4 className="text-sm font-bold text-white border-l-4 border-emerald-500 pl-2">Đinh Mức Đóng Bảo Hiểm & Hỗ Trợ Từ Nhà Nước</h4>
+            <p className="text-xs text-slate-400">Thiết lập các mức định mức phục vụ cho tính toán phí thu BHYT hộ gia đình và BHXH tự nguyện.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-950/40 p-4 rounded-xl border border-slate-850">
+              {/* Định mức lương và chuẩn nghèo */}
+              <div className="space-y-4">
+                <span className="text-xs font-bold text-emerald-400 block border-b border-slate-800 pb-1.5 uppercase tracking-wide">1. Định mức nền tảng</span>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Mức lương cơ sở đóng BHYT (đ)</label>
+                  <input
+                    type="number"
+                    name="baseSalaryBHYT"
+                    value={formData.baseSalaryBHYT || 2340000}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mặc định Nhà nước: 2,340,000 đ (Từ 01/07/2024)</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Mức chuẩn hộ nghèo tham gia BHXH (đ)</label>
+                  <input
+                    type="number"
+                    name="povertyStandardBHXH"
+                    value={formData.povertyStandardBHXH || 1500000}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Chuẩn hộ nghèo khu vực nông thôn: 1,500,000 đ</span>
+                </div>
+              </div>
+
+              {/* Mức hỗ trợ BHXH hàng tháng */}
+              <div className="space-y-4">
+                <span className="text-xs font-bold text-indigo-400 block border-b border-slate-800 pb-1.5 uppercase tracking-wide">2. Mức hỗ trợ đóng BHXH (đ/tháng)</span>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Hộ nghèo hỗ trợ (đ/tháng)</label>
+                  <input
+                    type="number"
+                    name="supportPoorBHXH"
+                    value={formData.supportPoorBHXH || 99000}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức tối thiểu: 30% * 22% * Chuẩn nghèo = 99,000 đ</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Hộ cận nghèo hỗ trợ (đ/tháng)</label>
+                  <input
+                    type="number"
+                    name="supportNearPoorBHXH"
+                    value={formData.supportNearPoorBHXH || 82500}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức tối thiểu: 25% * 22% * Chuẩn nghèo = 82,500 đ</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Đối tượng khác hỗ trợ (đ/tháng)</label>
+                  <input
+                    type="number"
+                    name="supportOtherBHXH"
+                    value={formData.supportOtherBHXH || 33000}
+                    onChange={handleChange}
+                    min="0"
+                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức tối thiểu: 10% * 22% * Chuẩn nghèo = 33,000 đ</span>
                 </div>
               </div>
             </div>

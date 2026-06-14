@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Customer, InsuranceType, PaymentHistory, UserSettings } from '../types';
-import { X, Save, Plus, Trash2, ShieldCheck, DollarSign, Calendar, Eye, FileText } from 'lucide-react';
+import { X, Save, Plus, Trash2, ShieldCheck, DollarSign, Calendar, Eye, FileText, Copy } from 'lucide-react';
 
 interface CustomerModalProps {
   customer?: Customer; // If undefined, we are creating a new customer
@@ -29,8 +29,13 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const [expiryDateBHXH, setExpiryDateBHXH] = useState(''); // BHXH Expiry
   const [type, setType] = useState<InsuranceType>('BHYT'); // Dùng cho loại hình đóng tiền hiện tại
   const [notes, setNotes] = useState('');
+  const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
+  const [birthday, setBirthday] = useState('');
+  const [gender, setGender] = useState<'Nam' | 'Nữ' | ''>('');
+
+  const [copied, setCopied] = useState(false);
 
   // payment inputs
   const [showAddPayment, setShowAddPayment] = useState(false);
@@ -51,9 +56,9 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const getSuggestedPremium = () => {
     const months = parseInt(periodMonths) || 12;
     if (type === 'BHYT') {
-      // Vietnam BHYT Hộ gia đình (From July 2024, base wage is 2,340,000 VND)
-      // Monthly base premium = 4.5% of 2.34M = 105,300 VND
-      const baseMonthly = 105300;
+      // Vietnam BHYT Hộ gia đình (dynamic from settings, otherwise default to 2,340,000 VND base salary)
+      const baseSalary = settings.baseSalaryBHYT || 2340000;
+      const baseMonthly = Math.round(baseSalary * 0.045);
       let multiplier = 1.0;
       let label = 'Thành viên thứ 1 (Mức đóng 100%)';
       
@@ -78,31 +83,29 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
         note: `BHYT Hộ gia đình - ${label} | Chu kỳ đóng: ${months} tháng`
       };
     } else {
-      // Vietnam Voluntary BHXH (22% of chosen income, minimum rural poverty line is 1,500,000 VND)
-      // State supports a fixed percentage of Rural poverty level (1.5M VND * 22% = 330,000 VND)
-      const baseGovSupportBasis = 330000;
-      let supportPercent = 0.10; // other: 10%
+      // Vietnam Voluntary BHXH
+      // State supports a fixed VND amount based on the selected tier from settings
+      let supportAmount = settings.supportOtherBHXH !== undefined ? settings.supportOtherBHXH : 33000;
       let supportLabel = 'Đối tượng khác (10%)';
       
       if (bhxhSupportTier === 'none') {
-        supportPercent = 0.0;
-        supportLabel = 'Không nhận hỗ trợ (0%)';
+        supportAmount = 0;
+        supportLabel = 'Không nhận hỗ trợ';
       } else if (bhxhSupportTier === 'near_poor') {
-        supportPercent = 0.25;
+        supportAmount = settings.supportNearPoorBHXH !== undefined ? settings.supportNearPoorBHXH : 82500;
         supportLabel = 'Hộ cận nghèo (25%)';
       } else if (bhxhSupportTier === 'poor') {
-        supportPercent = 0.30;
+        supportAmount = settings.supportPoorBHXH !== undefined ? settings.supportPoorBHXH : 99000;
         supportLabel = 'Hộ nghèo (30%)';
       }
       
-      const monGovSupport = Math.round(baseGovSupportBasis * supportPercent);
       const rawCostPerMonth = Math.round(bhxhIncomeChoice * 0.22);
-      const monNetCost = rawCostPerMonth - monGovSupport;
+      const monNetCost = rawCostPerMonth - supportAmount;
       const totalCost = Math.max(0, Math.round(monNetCost * months));
       
       return {
         amount: totalCost,
-        note: `BHXH tự nguyện - Thu nhập lựa chọn: ${bhxhIncomeChoice.toLocaleString()}đ/tháng | Hỗ trợ: ${supportLabel} | Chu kỳ đóng: ${months} tháng`
+        note: `BHXH tự nguyện - Thu nhập lựa chọn: ${bhxhIncomeChoice.toLocaleString()}đ/tháng | Hỗ trợ: ${supportLabel} (${supportAmount.toLocaleString()}đ/tháng) | Chu kỳ đóng: ${months} tháng`
       };
     }
   };
@@ -125,10 +128,13 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setInsuranceCodeBHXH(customer.insuranceCodeBHXH || '');
       setExpiryDateBHXH(customer.expiryDateBHXH || '');
       setNotes(customer.notes || '');
+      setAddress(customer.address || '');
       setStatus(customer.status);
       setPaymentHistory(customer.paymentHistory || []);
       // default the estimator/payment selector type to BHXH if they have it, otherwise BHYT
       setType(customer.hasBHXH ? 'BHXH' : 'BHYT');
+      setBirthday(customer.birthday || '');
+      setGender(customer.gender || '');
     } else {
       setName('');
       setPhone('');
@@ -139,12 +145,16 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setInsuranceCodeBHXH('');
       setExpiryDateBHXH('');
       setNotes('');
+      setAddress('');
       setStatus('active');
       setPaymentHistory([]);
       setType('BHYT');
+      setBirthday('');
+      setGender('');
     }
     setPaymentDate(new Date().toISOString().split('T')[0]);
-  }, [customer]);
+    setBhxhIncomeChoice(settings.povertyStandardBHXH || 1500000);
+  }, [customer, settings.povertyStandardBHXH]);
 
   const handleAddPayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,11 +224,42 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       createdAt: customer?.createdAt || new Date().toISOString().split('T')[0],
       notes: notes.trim(),
       status,
-      paymentHistory
+      paymentHistory,
+      birthday: birthday.trim() || undefined,
+      gender: gender as 'Nam' | 'Nữ' || undefined,
+      address: address.trim() || undefined
     };
 
     onSave(savedCustomer);
     onClose();
+  };
+
+  const handleCopyQuickDetails = () => {
+    if (!customer) return;
+    // Get social security code
+    let codeBHXH = '';
+    if (customer.insuranceCodeBHXH) {
+      codeBHXH = customer.insuranceCodeBHXH.trim();
+    } else {
+      const bhyt = customer.insuranceCode || '';
+      codeBHXH = bhyt.length >= 10 ? bhyt.slice(-10) : bhyt;
+    }
+
+    // Format birthday YYYY-MM-DD -> DD/MM/YYYY
+    const formattedBirthday = customer.birthday
+      ? (customer.birthday.includes('-') ? customer.birthday.split('-').reverse().join('/') : customer.birthday)
+      : '';
+
+    const details = [
+      customer.name,
+      codeBHXH,
+      formattedBirthday,
+      customer.notes || ''
+    ].join(', ');
+
+    navigator.clipboard.writeText(details);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -229,16 +270,33 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       >
         {/* Title view */}
         <div className="px-6 py-4 bg-gradient-to-r from-emerald-950 to-teal-900 border-b border-slate-850 text-white flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold font-sans text-white">
-              {customer ? `Chi Tiết Sổ Thu: ${customer.name}` : 'Thêm Người Dân Mới'}
-            </h3>
+          <div className="flex-1 min-w-0 pr-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-semibold font-sans text-white truncate max-w-[280px] sm:max-w-[450px]">
+                {customer ? `Chi Tiết Sổ Thu: ${customer.name}` : 'Thêm Người Dân Mới'}
+              </h3>
+              {customer && (
+                <button
+                  type="button"
+                  onClick={handleCopyQuickDetails}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg border flex items-center gap-1 cursor-pointer transition-all ${
+                    copied
+                      ? 'bg-teal-950/80 text-teal-300 border-teal-500/80 scale-95'
+                      : 'bg-slate-950/50 text-white border-slate-800 hover:bg-slate-900 hover:text-emerald-400'
+                  }`}
+                  title="Sao chép nhanh thông tin dưới dạng: Họ tên, Mã BHXH, Ngày sinh, Ghi chú"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  {copied ? 'Đã copy!' : 'Copy nhanh'}
+                </button>
+              )}
+            </div>
             <p className="text-xs text-emerald-400/80 mt-0.5">Sổ ghi chép thông tin thu phí BHXH Việt Nam, BHYT Đại diện</p>
           </div>
           <button 
             type="button" 
             onClick={onClose} 
-            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -255,7 +313,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Họ và tên người dân *</label>
                 <input
                   type="text"
@@ -265,6 +323,30 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                   required
                   className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Ngày sinh</label>
+                  <input
+                    type="date"
+                    value={birthday}
+                    onChange={(e) => setBirthday(e.target.value)}
+                    className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Giới tính</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as any)}
+                    className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white cursor-pointer"
+                  >
+                    <option className="bg-slate-900" value="">Chọn...</option>
+                    <option className="bg-slate-900" value="Nam">Nam</option>
+                    <option className="bg-slate-900" value="Nữ">Nữ</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -326,15 +408,28 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Ghi chú thêm về hoàn cảnh, địa chỉ</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Địa chỉ nhà cụ thể, ghi chú liên hệ, thông tin hạn 5 năm liên tục, v.v."
-                className="w-full text-xs p-3 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Địa chỉ thường trú</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Xã/Phường, Quận/Huyện, Tỉnh/Thành phố..."
+                  className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Ghi chú thêm về hoàn cảnh</label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Hạn đóng 5 năm liên tục, ghi chú liên hệ khác..."
+                  className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
+                />
+              </div>
             </div>
 
             {/* Combined BHXH togglable section */}
@@ -560,7 +655,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       <div className="col-span-2 bg-slate-950/60 rounded-xl p-3 border border-slate-850 space-y-2.5">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">🧮 MÁY TÍNH ĐỊNH MỨC BHYT HỘ GIA ĐÌNH</span>
-                          <span className="text-[9px] text-slate-500 font-medium">Lương cơ sở: 2.340.000đ</span>
+                          <span className="text-[9px] text-slate-500 font-medium">Lương cơ sở: {(settings.baseSalaryBHYT || 2340000).toLocaleString()}đ</span>
                         </div>
                         <div className="space-y-1">
                           <label className="block text-[9px] font-bold text-slate-400">Thứ tự tham gia trong gia đình:</label>
@@ -609,8 +704,8 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                           <label className="block text-[9px] font-bold text-slate-400">Chọn thu nhập làm căn cứ đóng (đ/tháng):</label>
                           <div className="grid grid-cols-4 gap-1">
                             {[
-                              { label: 'Chuẩn NT (1.5M)', value: 1500000 },
-                              { label: 'Lương cơ sở (2.34M)', value: 2340000 },
+                              { label: `Chuẩn nghèo (${((settings.povertyStandardBHXH || 1500000)/1000000).toFixed(2).replace(/\.00$/, '')}M)`, value: settings.povertyStandardBHXH || 1500000 },
+                              { label: `Lương cơ sở (${((settings.baseSalaryBHYT || 2340000)/1000000).toFixed(2).replace(/\.00$/, '')}M)`, value: settings.baseSalaryBHYT || 2340000 },
                               { label: 'Mức 3 triệu', value: 3000000 },
                               { label: 'Mức 5 triệu', value: 5000000 },
                             ].map((income) => (
@@ -729,6 +824,27 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                           <span className="text-emerald-400 font-medium">Hoa hồng: {pay.commissionAmount.toLocaleString()}đ</span>
                         </div>
                         {pay.note && <p className="text-[10px] text-slate-400 mt-1 italic">"{pay.note}"</p>}
+                        {(pay.nguoiNop || pay.trangThaiHoSoName || pay.bienLaiId) && (
+                          <div className="flex flex-wrap items-center gap-2 mt-1 bg-slate-950/40 px-2 py-0.5 border border-slate-800/40 rounded text-[9px] w-fit">
+                            {pay.bienLaiId && (
+                              <span className="text-slate-300">
+                                ID Biên lai: <strong className="text-amber-400 font-mono">{pay.bienLaiId}</strong>
+                              </span>
+                            )}
+                            {pay.bienLaiId && (pay.nguoiNop || pay.trangThaiHoSoName) && <span className="text-slate-650 font-semibold">|</span>}
+                            {pay.nguoiNop && (
+                              <span className="text-slate-300">
+                                Người nộp: <strong className="text-slate-200">{pay.nguoiNop}</strong>
+                              </span>
+                            )}
+                            {pay.nguoiNop && pay.trangThaiHoSoName && <span className="text-slate-650 font-semibold">|</span>}
+                            {pay.trangThaiHoSoName && (
+                              <span className="text-slate-300">
+                                Trạng thái HS: <span className="text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-900/60 px-1 py-0.2 rounded">{pay.trangThaiHoSoName}</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {deletePaymentConfirmId === pay.id ? (
                         <div className="flex items-center gap-1 bg-rose-950/60 border border-slate-805 rounded px-1.5 py-0.5 animate-fade-in">

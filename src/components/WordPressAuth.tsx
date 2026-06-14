@@ -207,7 +207,11 @@ export default function WordPressAuth({ onSuccess, onBypass }: WordPressAuthProp
               Hệ thống được đóng gói kết nối trực tiếp và an toàn đến máy chủ WordPress của <strong>Long Web Studio</strong>:
             </p>
             
-            
+            <div className="pt-1">
+              <div className="w-full text-[10px] sm:text-xs font-mono p-2.5 border border-slate-850 bg-slate-900/50 rounded-lg text-slate-300 break-all select-all">
+                {DEFAULT_ENDPOINT}
+              </div>
+            </div>
           </div>
 
           {/* Form Message States */}
@@ -261,7 +265,39 @@ export default function WordPressAuth({ onSuccess, onBypass }: WordPressAuthProp
             </div>
           </div>
 
-         
+          {/* Tab Selector between Login and Register */}
+          <div className="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-850">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('login');
+                setErrorMsg(null);
+              }}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'login'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              Đăng Nhập
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('register');
+                setErrorMsg(null);
+              }}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'register'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Đăng Ký Mới
+            </button>
+          </div>
 
           {/* Actual fields */}
           <div className="space-y-4">

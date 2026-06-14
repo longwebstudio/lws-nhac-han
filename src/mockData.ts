@@ -9,12 +9,19 @@ import { Customer, UserSettings } from './types';
 export const INITIAL_SETTINGS: UserSettings = {
   agencyName: 'Hồ Thị Thắm - Điểm thu BHXH, BHYT bưu điện VHX Tự Lập',
   agentPhone: '0978333963',
-  bhxhCommissionRate: 4.5, // 4.5%
-  bhytCommissionRate: 3.1, // 3.1%
+  bhxhCommissionRate: 4.9, // 4.5%
+  bhytCommissionRate: 2.64, // 3.1%
   smsTemplate: 'Kính gửi cô/chú [TEN_KHACH_HANG], thẻ BHYT của cô/chú sẽ hết hạn vào ngày [NGAY_HET_HAN]. Để tránh gián đoạn quyền lợi khám chữa bệnh (đặc biệt là hạn 5 năm liên tục), cô/chú vui lòng liên hệ [TEN_DAI_LY] ([SDT_DAI_LY]) để nộp tiền gia hạn nhé. Trân trọng!',
   zaloTemplate: '🔔 NHẮC GIA HẠN BẢO HIỂM Y TẾ (BHYT)\n\nKính gửi cô/chú *[TEN_KHACH_HANG]*,\n\nThẻ BHYT (Mã số: [MA_SO]) của Cô/Chú sắp hết hiệu lực vào ngày *[NGAY_HET_HAN]* (còn [SO_NGAY] ngày).\n\nCô/Chú vui lòng liên hệ Đại lý thu *[TEN_DAI_LY]* qua số điện thoại *[SDT_DAI_LY]* để làm hồ sơ gia hạn sớm, tránh gián đoạn quyền lợi thẻ bảo hiểm y tế nhé.\n\nTrân trọng cảm ơn Cô/Chú!',
   smsTemplateBHXH: 'Kính gửi cô/chú [TEN_KHACH_HANG], sổ BHXH tự nguyện của cô/chú sẽ đến kỳ đóng phí vào ngày [NGAY_HET_HAN]. Để duy trì quá trình tích lũy thời gian hưởng lương hưu sau này, cô/chú vui lòng liên hệ [TEN_DAI_LY] ([SDT_DAI_LY]) để đóng tiếp nhé. Trân trọng!',
-  zaloTemplateBHXH: '🔔 NHẮC ĐÓNG PHÍ BHXH TỰ NGUYỆN\n\nKính gửi cô/chú *[TEN_KHACH_HANG]*,\n\nSổ BHXH tự nguyện (Mã số: [MA_SO]) của Cô/Chú sắp đến kỳ đóng phí tiếp theo vào ngày *[NGAY_HET_HAN]* (còn [SO_NGAY] ngày).\n\nCô/Chú vui lòng liên hệ Đại lý *[TEN_DAI_LY]* qua số điện thoại *[SDT_DAI_LY]* để nộp phí gia hạn đúng hạn, bảo đảm thời gian tích lũy lương hưu hưu trí.\n\nTrân trọng cảm ơn Cô/Chú!'
+  zaloTemplateBHXH: '🔔 NHẮC ĐÓNG PHÍ BHXH TỰ NGUYỆN\n\nKính gửi cô/chú *[TEN_KHACH_HANG]*,\n\nSổ BHXH tự nguyện (Mã số: [MA_SO]) của Cô/Chú sắp đến kỳ đóng phí tiếp theo vào ngày *[NGAY_HET_HAN]* (còn [SO_NGAY] ngày).\n\nCô/Chú vui lòng liên hệ Đại lý *[TEN_DAI_LY]* qua số điện thoại *[SDT_DAI_LY]* để nộp phí gia hạn đúng hạn, bảo đảm thời gian tích lũy lương hưu hưu trí.\n\nTrân trọng cảm ơn Cô/Chú!',
+  baseSalaryBHYT: 2340000,
+  povertyStandardBHXH: 1500000,
+  supportPoorBHXH: 99000,
+  supportNearPoorBHXH: 82500,
+  supportOtherBHXH: 33000,
+  autoBackupWordPress: true,
+  lastAutoBackupDate: ''
 };
 
 export const INITIAL_CUSTOMERS: Customer[] = [
@@ -29,6 +36,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     createdAt: '2025-06-15',
     notes: 'Khách hàng đóng tiền qua chuyển khoản thường kỳ. Có bệnh nền cần bảo hiểm liên tục.',
     status: 'active',
+    birthday: '1975-04-12',
+    gender: 'Nam',
     paymentHistory: [
       {
         id: 'pay-1-1',
@@ -52,6 +61,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     createdAt: '2025-12-19',
     notes: 'Liên hệ qua con gái tên Hương để đóng tiền.',
     status: 'active',
+    birthday: '1982-11-23',
+    gender: 'Nữ',
     paymentHistory: [
       {
         id: 'pay-2-1',
@@ -77,6 +88,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     createdAt: '2025-06-10',
     notes: 'Tham gia BHXH tự nguyện mức thu nhập lựa chọn 3.000.000đ. Đóng song hành cả BHYT và BHXH.',
     status: 'active',
+    birthday: '1989-08-05',
+    gender: 'Nam',
     paymentHistory: [
       {
         id: 'pay-3-1',
@@ -109,6 +122,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     createdAt: '2025-09-30',
     notes: 'Khách hàng thân thiết của tổ xã.',
     status: 'active',
+    birthday: '1995-02-14',
+    gender: 'Nữ',
     paymentHistory: [
       {
         id: 'pay-4-1',
@@ -134,6 +149,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     createdAt: '2025-06-25',
     notes: 'Kinh doanh tạp hóa nhỏ tại nhà. Tham gia cả BHYT và BHXH tự nguyện.',
     status: 'active',
+    birthday: '1968-06-30',
+    gender: 'Nam',
     paymentHistory: [
       {
         id: 'pay-5-1',
