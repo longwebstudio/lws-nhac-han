@@ -49,11 +49,9 @@ export interface UserSettings {
   zaloTemplate: string; // Zalo BHYT
   smsTemplateBHXH?: string; // SMS BHXH
   zaloTemplateBHXH?: string; // Zalo BHXH
-  baseSalaryBHYT?: number; // Mức lương cơ sở đóng BHYT (đ)
+  baseSalaryBHYT?: number; // Mức lương cơ sở đóng BHYT (đ) - 2.530.000đ
   povertyStandardBHXH?: number; // Mức chuẩn hộ nghèo tham gia BHXH (đ)
-  supportPoorBHXH?: number; // Mức hỗ trợ hộ nghèo (đ/tháng)
-  supportNearPoorBHXH?: number; // Mức hỗ trợ hộ cận nghèo (đ/tháng)
-  supportOtherBHXH?: number; // Mức hỗ trợ đối tượng khác (đ/tháng)
+  supportOtherBHXH?: number; // Mức hỗ trợ đối tượng khác (đ/tháng) - 132.000đ
   autoBackupWordPress?: boolean; // Tự động sao lưu lên WordPress hàng ngày
   lastAutoBackupDate?: string; // Ngày cuối cùng đã tự động sao lưu (YYYY-MM-DD)
 }

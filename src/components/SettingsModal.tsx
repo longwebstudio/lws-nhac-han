@@ -5,8 +5,9 @@
 
 import React, { useState } from 'react';
 import { UserSettings } from '../types';
-import { X, Save, AlertCircle, RotateCcw } from 'lucide-react';
+import { X, Save, AlertCircle, RotateCcw, Globe } from 'lucide-react';
 import { INITIAL_SETTINGS } from '../mockData';
+import { getStoredWordPressUrl, setStoredWordPressUrl, DEFAULT_ENDPOINT } from '../lib/graphql';
 
 interface SettingsModalProps {
   settings: UserSettings;
@@ -16,6 +17,7 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ settings, onSave, onClose }: SettingsModalProps) {
   const [formData, setFormData] = useState<UserSettings>({ ...settings });
+  const [wpGraphqlUrl, setWpGraphqlUrl] = useState(getStoredWordPressUrl());
   const [successMsg, setSuccessMsg] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -58,6 +60,7 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setStoredWordPressUrl(wpGraphqlUrl);
     onSave(formData);
     setSuccessMsg('Đã lưu cấu hình thành công!');
     setTimeout(() => {
@@ -167,10 +170,12 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
             </div>
           </div>
 
-          {/* Automatic Daily Backup Option */}
+          {/* Automatic Daily Backup Option & WPGraphQL Server Config */}
           <div className="space-y-4 pt-2">
-            <h4 className="text-sm font-bold text-white border-l-4 border-indigo-500 pl-2">Sao Lưu Dữ Liệu Lên WordPress</h4>
-            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850 space-y-3">
+            <h4 className="text-sm font-bold text-white border-l-4 border-indigo-500 pl-2 flex items-center justify-between">
+              <span>Sao Lưu Dữ Liệu & Máy Chủ WordPress</span>
+            </h4>
+            <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850 space-y-4">
               <label id="auto-backup-checkbox" className="flex items-start gap-3 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -186,11 +191,41 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
                   </p>
                 </div>
               </label>
+              
               {formData.lastAutoBackupDate && (
                 <div className="text-[10px] text-slate-500 flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded w-fit italic font-mono">
                   ● Lần tự động sao lưu gần nhất: {formData.lastAutoBackupDate}
                 </div>
               )}
+
+              <div className="pt-3 border-t border-slate-850 space-y-2">
+                <label className="block text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-indigo-400" />
+                  Địa chỉ máy chủ WordPress GraphQL (Endpoint):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={wpGraphqlUrl}
+                    onChange={(e) => setWpGraphqlUrl(e.target.value)}
+                    placeholder={DEFAULT_ENDPOINT}
+                    className="flex-1 text-xs p-2.5 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white font-mono"
+                  />
+                  {wpGraphqlUrl !== DEFAULT_ENDPOINT && (
+                    <button
+                      type="button"
+                      onClick={() => setWpGraphqlUrl(DEFAULT_ENDPOINT)}
+                      className="px-3 py-1.5 text-xs text-indigo-400 hover:text-indigo-300 bg-slate-950 border border-indigo-900/60 rounded-lg hover:bg-slate-900 transition-colors font-medium cursor-pointer shrink-0"
+                      title="Đặt lại đường dẫn mặc định"
+                    >
+                      Mặc định
+                    </button>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Cấu hình URL kết nối WPGraphQL của máy chủ WordPress. Bạn có thể sử dụng máy chủ WordPress riêng hoặc dùng mặc định: <code className="text-emerald-400 font-mono break-all">{DEFAULT_ENDPOINT}</code>
+                </p>
+              </div>
             </div>
           </div>
 
@@ -208,12 +243,12 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
                   <input
                     type="number"
                     name="baseSalaryBHYT"
-                    value={formData.baseSalaryBHYT || 2340000}
+                    value={formData.baseSalaryBHYT || 2530000}
                     onChange={handleChange}
                     min="0"
                     className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
                   />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mặc định Nhà nước: 2,340,000 đ (Từ 01/07/2024)</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức lương cơ sở quy định: 2,530,000 đ</span>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1">Mức chuẩn hộ nghèo tham gia BHXH (đ)</label>
@@ -233,40 +268,19 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
               <div className="space-y-4">
                 <span className="text-xs font-bold text-indigo-400 block border-b border-slate-800 pb-1.5 uppercase tracking-wide">2. Mức hỗ trợ đóng BHXH (đ/tháng)</span>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Hộ nghèo hỗ trợ (đ/tháng)</label>
-                  <input
-                    type="number"
-                    name="supportPoorBHXH"
-                    value={formData.supportPoorBHXH || 99000}
-                    onChange={handleChange}
-                    min="0"
-                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                  />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức tối thiểu: 30% * 22% * Chuẩn nghèo = 99,000 đ</span>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Hộ cận nghèo hỗ trợ (đ/tháng)</label>
-                  <input
-                    type="number"
-                    name="supportNearPoorBHXH"
-                    value={formData.supportNearPoorBHXH || 82500}
-                    onChange={handleChange}
-                    min="0"
-                    className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                  />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức tối thiểu: 25% * 22% * Chuẩn nghèo = 82,500 đ</span>
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1">Đối tượng khác hỗ trợ (đ/tháng)</label>
                   <input
                     type="number"
                     name="supportOtherBHXH"
-                    value={formData.supportOtherBHXH || 33000}
+                    value={formData.supportOtherBHXH || 132000}
                     onChange={handleChange}
                     min="0"
                     className="w-full text-sm px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
                   />
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức tối thiểu: 10% * 22% * Chuẩn nghèo = 33,000 đ</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">Mức hỗ trợ đối tượng khác: 132,000 đ/tháng</span>
+                </div>
+                <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-850 text-[11px] text-slate-400 leading-relaxed">
+                  💡 <em>Lưu ý: Đối tượng Hộ nghèo và Hộ cận nghèo không được quản lý bởi nhân viên thu nên đã được lược bỏ khỏi cấu hình.</em>
                 </div>
               </div>
             </div>

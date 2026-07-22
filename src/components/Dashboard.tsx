@@ -8,8 +8,11 @@ import { Customer, UserSettings } from '../types';
 import { 
   Users, Bell, Calendar, DollarSign, Search, Plus, 
   Settings, Download, Upload, RefreshCw, LogOut, Check, Copy, X,
-  Cloud, AlertTriangle, UserCheck, Trash2, TrendingUp, BellRing, Sparkles
+  Cloud, AlertTriangle, UserCheck, Trash2, TrendingUp, BellRing, Sparkles, HelpCircle,
+  LayoutGrid, List, Share2
 } from 'lucide-react';
+import QuickGuideModal from './QuickGuideModal';
+import TermsModal from './TermsModal';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -26,23 +29,23 @@ import {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl shadow-2xl text-xs space-y-1.5 leading-none">
-        <p className="font-extrabold text-slate-300 border-b border-slate-800 pb-1 mb-1 font-mono text-center">{label}</p>
+      <div className="bg-slate-950/95 backdrop-blur-md border border-slate-800 p-2.5 sm:p-3 rounded-xl shadow-2xl text-[11px] sm:text-xs space-y-1.5 leading-none max-w-[85vw] pointer-events-none">
+        <p className="font-extrabold text-slate-300 border-b border-slate-800 pb-1 mb-1 font-mono text-center truncate">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center justify-between gap-5 font-mono">
-            <span className="flex items-center gap-1.5" style={{ color: entry.color }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.stroke || entry.fill || entry.color }} />
-              {entry.name}:
+          <div key={index} className="flex items-center justify-between gap-3 sm:gap-5 font-mono">
+            <span className="flex items-center gap-1.5 truncate max-w-[140px] sm:max-w-none" style={{ color: entry.color }}>
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.stroke || entry.fill || entry.color }} />
+              <span className="truncate">{entry.name}:</span>
             </span>
-            <span className="font-extrabold text-white">
+            <span className="font-extrabold text-white shrink-0">
               {entry.value.toLocaleString()}đ
             </span>
           </div>
         ))}
         {payload.length > 1 && (
-          <div className="flex items-center justify-between gap-5 font-mono border-t border-slate-800 pt-1.5 mt-1">
-            <span className="text-slate-400 font-semibold">Cộng:</span>
-            <span className="font-black text-emerald-400">
+          <div className="flex items-center justify-between gap-3 sm:gap-5 font-mono border-t border-slate-800 pt-1.5 mt-1">
+            <span className="text-slate-400 font-semibold shrink-0">Cộng:</span>
+            <span className="font-black text-emerald-400 shrink-0">
               {payload.reduce((sum: number, entry: any) => sum + entry.value, 0).toLocaleString()}đ
             </span>
           </div>
@@ -90,6 +93,7 @@ interface DashboardProps {
   onOpenEditModal: (customer: Customer) => void;
   onResetDemoData: () => void;
   onGoBackLanding: () => void;
+  onOpenSEOShare?: () => void;
 }
 
 export default function Dashboard({
@@ -111,18 +115,22 @@ export default function Dashboard({
   onOpenAddModal,
   onOpenEditModal,
   onResetDemoData,
-  onGoBackLanding
+  onGoBackLanding,
+  onOpenSEOShare
 }: DashboardProps) {
 
-  // search, filters
+  // search, filters & view layout
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'All' | 'BHYT' | 'BHXH'>('All');
   const [filterPeriod, setFilterPeriod] = useState<'All' | 'Expired' | '3Days' | '7Days' | 'Safe'>('All');
   const [filterStatus, setFilterStatus] = useState<'All' | 'active' | 'inactive'>('All');
   const [filterReminder, setFilterReminder] = useState<'All' | 'NotReminded' | 'Reminded'>('All');
   const [filterPayer, setFilterPayer] = useState<string>('All');
+  const [viewLayout, setViewLayout] = useState<'card' | 'table'>('card');
 
   // local notification template generator states
+  const [showQuickGuideModal, setShowQuickGuideModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [activeReminderCust, setActiveReminderCust] = useState<Customer | null>(null);
   const [activeReminderChannel, setActiveReminderChannel] = useState<'Zalo' | 'SMS'>('Zalo');
   const [reminderInsType, setReminderInsType] = useState<'BHYT' | 'BHXH'>('BHYT');
@@ -615,17 +623,19 @@ export default function Dashboard({
 
       {/* Modern Dashboard Header */}
       <header className="bg-slate-950/90 backdrop-blur-md border-b border-slate-900 sticky top-0 z-20 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 overflow-hidden">
           
-          <div className="flex items-center gap-2">
-            <span className="p-1 px-2.5 bg-emerald-600 rounded-lg text-white font-black text-sm">Lws</span>
-            <div>
-              <span className="font-extrabold text-sm tracking-tight text-white block">Lws nhắc hạn</span>
-              <span className="text-[9px] text-slate-400 block font-semibold">{settings.agencyName}</span>
+          <div className="flex items-center gap-2 min-w-0 shrink max-w-[160px] sm:max-w-[260px] md:max-w-md">
+            <span className="p-1 px-2.5 bg-emerald-600 rounded-lg text-white font-black text-sm shrink-0">LWS</span>
+            <div className="min-w-0">
+              <span className="font-extrabold text-sm tracking-tight text-white block truncate">LWS - Sổ thu bảo hiểm</span>
+              <span className="text-[9px] text-slate-400 block font-semibold truncate" title={settings.agencyName}>
+                {settings.agencyName}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Quick Action Button */}
             {showResetDemoConfirm ? (
               <div className="flex items-center gap-1 bg-rose-950/60 border border-slate-800 rounded-lg p-1 animate-fade-in text-[10px]">
@@ -668,18 +678,42 @@ export default function Dashboard({
 
             <button
               onClick={onOpenImport}
-              className="p-2 text-blue-400 bg-blue-950/40 border border-blue-900/60 hover:bg-blue-900/40 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
+              className="p-2 sm:px-2.5 text-blue-400 bg-blue-950/40 border border-blue-900/60 hover:bg-blue-900/40 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
+              title="Nhập dữ liệu từ Excel"
             >
-              <Upload className="w-3.5 h-3.5" />
-              Nhập từ Excel
+              <Upload className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Nhập từ Excel</span>
+              <span className="sm:hidden">Nhập</span>
             </button>
+
+            <button
+              onClick={() => setShowQuickGuideModal(true)}
+              className="px-2 sm:px-3 py-2 text-emerald-400 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/80 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-xs"
+              title="Xem hướng dẫn sử dụng nhanh 3 bước"
+            >
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Hướng dẫn 3 bước</span>
+              <span className="sm:hidden">Hướng dẫn</span>
+            </button>
+
+            {onOpenSEOShare && (
+              <button
+                onClick={onOpenSEOShare}
+                className="px-2 sm:px-3 py-2 text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/80 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-xs"
+                title="Tối ưu SEO & Xem trước thẻ chia sẻ Zalo (Open Graph)"
+              >
+                <Share2 className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
+                <span className="hidden xl:inline">SEO & Chia Sẻ</span>
+                <span className="xl:hidden">SEO</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenSettings}
               className="p-2 text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
               title="Cài đặt tin nhắn và hoa hồng"
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-4 h-4 shrink-0" />
               <span className="hidden lg:inline">Cài đặt</span>
             </button>
 
@@ -688,8 +722,8 @@ export default function Dashboard({
               className="p-2 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
               title="Về Trang Landing Page"
             >
-              <LogOut className="w-3.5 h-3.5 text-slate-400" />
-              Về Trang Chủ
+              <LogOut className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="hidden sm:inline">Về Trang Chủ</span>
             </button>
           </div>
 
@@ -709,10 +743,26 @@ export default function Dashboard({
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h3 className="text-sm font-extrabold text-white">WordPress Cloud Sync</h3>
                 {wpUser ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-950 text-emerald-400 border border-emerald-900/60 uppercase">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                    Đã Đồng Bộ Hóa
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-950 text-emerald-400 border border-emerald-900/60 uppercase">
+                      <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                      Đã Đồng Bộ Hóa
+                    </span>
+                    {settings.autoBackupWordPress ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-indigo-950 text-indigo-300 border border-indigo-800 uppercase" title="Tự động sao lưu LocalStorage lên WordPress mỗi ngày">
+                        🛡️ Sao Lưu Hàng Ngày: BẬT {settings.lastAutoBackupDate ? `(${settings.lastAutoBackupDate})` : ''}
+                      </span>
+                    ) : (
+                      <button 
+                        type="button"
+                        onClick={onOpenSettings}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 uppercase cursor-pointer"
+                        title="Bật tự động sao lưu trong Cài đặt"
+                      >
+                        ⚡ Sao Lưu Hàng Ngày: TẮT (Bật ngay)
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-955 text-amber-300 border border-amber-900/40 uppercase">
                     Ngoại tuyến (Offline)
@@ -1040,35 +1090,35 @@ export default function Dashboard({
           </div>
 
           {/* Card 4: Estimated Monthly Commission */}
-          <div className="bg-emerald-950 text-emerald-300 rounded-2xl border border-emerald-900 p-4 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-900 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-805">
-              <DollarSign className="w-5 h-5" />
+          <div className="bg-emerald-950 text-emerald-300 rounded-2xl border border-emerald-900 p-3.5 sm:p-4 shadow-sm flex items-start sm:items-center gap-3 col-span-2 sm:col-span-1 min-w-0 overflow-hidden">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-900 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-805 mt-0.5 sm:mt-0">
+              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div className="flex-1">
-              <span className="text-[9px] text-emerald-400 font-black uppercase tracking-widest block">Hoa hồng đại lý</span>
-              <span className="text-sm font-extrabold text-white font-mono block">
+            <div className="flex-1 min-w-0">
+              <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider block truncate">Hoa hồng đại lý</span>
+              <span className="text-sm sm:text-base font-extrabold text-white font-mono block truncate">
                 {stats.totalEstimatedCommission.toLocaleString()}đ
               </span>
-              <p className="text-[8px] text-emerald-405">Từ {stats.totalCollectedAmount.toLocaleString()}đ phí thu hộ</p>
+              <p className="text-[9px] text-emerald-300/80 truncate">Từ {stats.totalCollectedAmount.toLocaleString()}đ phí thu hộ</p>
               
-              <div className="flex gap-2 border-t border-emerald-900/40 pt-1 mt-1 text-[8px] text-emerald-300/80 whitespace-nowrap">
-                <div>
-                  <span className="font-semibold text-teal-400">BHYT:</span> <span className="font-mono">{stats.bhytCommission.toLocaleString()}đ</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-emerald-900/40 pt-1 mt-1 text-[9px] text-emerald-300/90">
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold text-teal-400">BHYT:</span> <span className="font-mono font-bold">{stats.bhytCommission.toLocaleString()}đ</span>
                 </div>
-                <div className="border-l border-emerald-900/40 pl-2">
-                  <span className="font-semibold text-indigo-400">BHXH:</span> <span className="font-mono">{stats.bhxhCommission.toLocaleString()}đ</span>
+                <div className="flex items-center gap-1 border-l border-emerald-900/40 pl-2">
+                  <span className="font-semibold text-indigo-400">BHXH:</span> <span className="font-mono font-bold">{stats.bhxhCommission.toLocaleString()}đ</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Card 5: Dashboard tổng quan tháng hiện tại */}
-          <div className="bg-[#111126] hover:bg-[#151532] text-indigo-200 rounded-2xl border border-indigo-900/60 p-4 shadow-md flex items-center gap-3 col-span-2 md:col-span-1 lg:col-span-1 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-indigo-950 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-900 animate-pulse">
-              <TrendingUp className="w-5 h-5" />
+          <div className="bg-[#111126] hover:bg-[#151532] text-indigo-200 rounded-2xl border border-indigo-900/60 p-3.5 sm:p-4 shadow-md flex items-start sm:items-center gap-3 col-span-2 sm:col-span-1 min-w-0 overflow-hidden transition-all">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-950 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-900 animate-pulse mt-0.5 sm:mt-0">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider block whitespace-nowrap">Tổng Quan Tháng H.Tại</span>
+              <span className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-wider block">Tổng Quan Tháng H.Tại</span>
               <div className="mt-1 space-y-1">
                 <div className="flex items-center justify-between text-[11px] gap-1">
                   <span className="text-slate-400 shrink-0">Đã thu:</span>
@@ -1087,24 +1137,24 @@ export default function Dashboard({
         </div>
 
         {/* THỐNG KÊ DOANH THU THU HỘ THEO THÁNG */}
-        <div id="revenue-chart-section" className="bg-slate-900 border border-slate-850 rounded-2xl p-4 md:p-5 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/60">
-            <div className="flex items-start gap-2.5">
+        <div id="revenue-chart-section" className="bg-slate-900 border border-slate-850 rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-4 max-w-full overflow-hidden min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/60 min-w-0">
+            <div className="flex items-start gap-2.5 min-w-0">
               <div className="p-2 bg-indigo-950/40 rounded-xl text-indigo-400 border border-indigo-900/40 mt-1 shrink-0">
                 <TrendingUp className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap">
+              <div className="min-w-0">
+                <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap leading-tight">
                   Biểu đồ Doanh thu nộp bảo hiểm theo tháng
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5 leading-snug">
                   Thống kê số tiền thu hộ đại lý tích lũy theo từng chu kỳ tháng cho BHYT và BHXH.
                 </p>
               </div>
             </div>
 
             {/* Phím điều khiển biểu đồ */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               {/* Lọc loại bảo hiểm */}
               <div className="flex bg-slate-950 p-0.5 rounded-lg text-[10px] font-bold border border-slate-800 shrink-0">
                 <button
@@ -1162,13 +1212,13 @@ export default function Dashboard({
 
           {/* Vùng hiển thị Biểu đồ */}
           {monthlyRevenueData.length > 0 ? (
-            <div className="space-y-4">
-              <div className="h-[220px] md:h-[260px] w-full select-none">
+            <div className="space-y-4 min-w-0">
+              <div className="h-[220px] md:h-[260px] w-full select-none min-w-0 overflow-hidden relative">
                 <ResponsiveContainer width="100%" height="100%">
                   {chartType === 'area' ? (
                     <AreaChart
                       data={monthlyRevenueData}
-                      margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                     >
                       <defs>
                         <linearGradient id="colorBHYT" x1="0" y1="0" x2="0" y2="1">
@@ -1197,9 +1247,9 @@ export default function Dashboard({
                         tickLine={false} 
                         axisLine={false}
                         tickFormatter={(v) => `${(v / 1000).toLocaleString()}k`}
-                        dx={-8}
+                        dx={-4}
                       />
-                      <Tooltip content={<CustomTooltip />} />
+                      <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50, outline: 'none' }} allowEscapeViewBox={{ x: false, y: false }} />
                       <Legend 
                         verticalAlign="top" 
                         height={36} 
@@ -1235,7 +1285,7 @@ export default function Dashboard({
                   ) : (
                     <BarChart
                       data={monthlyRevenueData}
-                      margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.25} />
                       <XAxis 
@@ -1254,9 +1304,9 @@ export default function Dashboard({
                         tickLine={false} 
                         axisLine={false}
                         tickFormatter={(v) => `${(v / 1000).toLocaleString()}k`}
-                        dx={-8}
+                        dx={-4}
                       />
-                      <Tooltip content={<CustomTooltip />} />
+                      <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50, outline: 'none' }} allowEscapeViewBox={{ x: false, y: false }} />
                       <Legend 
                         verticalAlign="top" 
                         height={36} 
@@ -1290,10 +1340,10 @@ export default function Dashboard({
               </div>
 
               {/* Chỉ số Phân tích */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5">
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase">Tháng cao điểm nhất</span>
-                  <span className="text-xs font-black text-rose-455 block font-mono">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-2">
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
+                  <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Tháng cao điểm nhất</span>
+                  <span className="text-xs font-black text-rose-400 block font-mono truncate">
                     {(() => {
                       if (!monthlyRevenueData.length) return 'N/A';
                       const sorted = [...monthlyRevenueData].sort((a, b) => b.total - a.total);
@@ -1301,9 +1351,9 @@ export default function Dashboard({
                     })()}
                   </span>
                 </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5">
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase">Trung bình / Tháng</span>
-                  <span className="text-xs font-black text-emerald-450 block font-mono">
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
+                  <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Trung bình / Tháng</span>
+                  <span className="text-xs font-black text-emerald-400 block font-mono truncate">
                     {(() => {
                       if (!monthlyRevenueData.length) return '0đ';
                       const sum = monthlyRevenueData.reduce((tot, d) => tot + d.total, 0);
@@ -1311,9 +1361,9 @@ export default function Dashboard({
                     })()}
                   </span>
                 </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 col-span-2 sm:col-span-1">
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase">Tăng trưởng thu hộ</span>
-                  <span className="text-xs font-black text-indigo-400 block font-mono flex items-center justify-center gap-1">
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
+                  <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Tăng trưởng thu hộ</span>
+                  <span className="text-xs font-black text-indigo-400 block font-mono flex items-center justify-center gap-1 truncate">
                     {(() => {
                       if (monthlyRevenueData.length < 2) return 'Ổn định 0%';
                       const last = monthlyRevenueData[monthlyRevenueData.length - 1].total;
@@ -1444,26 +1494,52 @@ export default function Dashboard({
             )}
 
             <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase">
-                Bản nháp được hệ thống điền tự động:
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase">
+                  Bản nháp tin nhắn {reminderInsType === 'BHXH' ? 'BHXH Tự nguyện' : 'BHYT Hộ gia đình'} điền tự động:
+                </label>
+                <span className="text-[10px] text-emerald-400 font-semibold">
+                  Mẫu: {reminderInsType === 'BHXH' ? 'Nhắc BHXH tự nguyện' : 'Nhắc BHYT'}
+                </span>
+              </div>
               
               <div className="relative">
                 <textarea
                   readOnly
                   rows={4}
                   value={generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType)}
-                  className="w-full text-xs font-sans p-3 border border-slate-800 rounded-xl bg-slate-950 text-slate-200 leading-relaxed shadow-xs focus:outline-none focus:border-emerald-500"
+                  className="w-full text-xs font-sans p-3 pb-12 border border-slate-800 rounded-xl bg-slate-950 text-slate-200 leading-relaxed shadow-xs focus:outline-none focus:border-emerald-500"
                 />
                 
-                <button
-                  type="button"
-                  onClick={() => handleCopyMessage(generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType))}
-                  className="absolute bottom-3 right-3 shrink-0 flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  Sao chép tin nhắn
-                </button>
+                <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyMessage(generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType))}
+                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md border border-slate-700"
+                    title="Sao chép văn bản vào bộ nhớ tạm"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-slate-300" />
+                    Sao chép
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType);
+                      handleCopyMessage(msg);
+                      const cleanPhone = activeReminderCust.phone.replace(/[^0-9]/g, '');
+                      if (cleanPhone) {
+                        window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+                      } else {
+                        alert('Người dân chưa có số điện thoại hợp lệ để mở Zalo Chat.');
+                      }
+                    }}
+                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md"
+                    title="Sao chép tin nhắn và mở thẳng hội thoại ZaloChat với số điện thoại này"
+                  >
+                    <span>💬 Mở Chat Zalo</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1515,11 +1591,12 @@ export default function Dashboard({
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500"
+                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500 font-medium"
+                title="Lọc loại hình bảo hiểm để tra cứu & nhắc hạn Zalo"
               >
-                <option value="All">Loại hình: Tất cả</option>
-                <option value="BHYT">Bảo hiểm Y tế (BHYT)</option>
-                <option value="BHXH">Bảo hiểm Xã hội (BHXH)</option>
+                <option value="All">Loại hình: Tất cả (Mặc định BHYT)</option>
+                <option value="BHYT">Bảo hiểm Y tế (Mặc định BHYT)</option>
+                <option value="BHXH">Chỉ tham gia BHXH tự nguyện (Nhắc BHXH)</option>
               </select>
 
               {/* Filter Expiry window list */}
@@ -1546,32 +1623,35 @@ export default function Dashboard({
                 <option value="inactive">Tạm dừng theo dõi</option>
               </select>
 
-              {/* Filter Reminder Status */}
-              <select
-                value={filterReminder}
-                onChange={(e) => setFilterReminder(e.target.value as any)}
-                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500"
-              >
-                <option value="All">Nhắc hạn: Tất cả trạng thái</option>
-                <option value="NotReminded">🔔 Chưa gửi nhắc hạn</option>
-                <option value="Reminded">✓ Đã gửi nhắc hạn</option>
-              </select>
-
-              {/* Filter Payer Selection */}
-              <select
-                value={filterPayer}
-                onChange={(e) => setFilterPayer(e.target.value)}
-                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500 max-w-[150px] truncate"
-                title="Lọc theo người nộp tiền gần nhất"
-              >
-                <option value="All">Người nộp: Tất cả</option>
-                <option value="None" className="bg-slate-900">❌ Chưa nộp</option>
-                {uniquePayers.map((payer) => (
-                  <option key={payer} className="bg-slate-900" value={payer}>
-                    👤 {payer}
-                  </option>
-                ))}
-              </select>
+              {/* View Layout Switcher */}
+              <div className="flex items-center bg-slate-950 p-1 border border-slate-800 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setViewLayout('card')}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewLayout === 'card'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Giao diện dạng thẻ - Tối ưu tra cứu & nhắn tin Zalo"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  Dạng Thẻ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewLayout('table')}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                    viewLayout === 'table'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Giao diện dạng bảng chi tiết"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  Dạng Bảng
+                </button>
+              </div>
 
               <button
                 onClick={onOpenAddModal}
@@ -1584,19 +1664,250 @@ export default function Dashboard({
 
           </div>
 
-          {/* Roster table view */}
-          <div className="overflow-x-auto">
-            {filteredCustomers.length === 0 ? (
-              <div className="text-center py-16 px-4 space-y-3">
-                <div className="w-12 h-12 bg-slate-955 rounded-full flex items-center justify-center mx-auto text-slate-600 border border-slate-850">
-                  <Search className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-200">Không tìm thấy người dân nào phù hợp</h3>
-                  <p className="text-xs text-slate-400">Hãy thử xóa bộ lọc tìm kiếm hoặc nhấp "Thêm người dân" để tạo mới.</p>
-                </div>
+          {/* Roster Container (Card layout or Table layout) */}
+          {filteredCustomers.length === 0 ? (
+            <div className="text-center py-16 px-4 space-y-3">
+              <div className="w-12 h-12 bg-slate-955 rounded-full flex items-center justify-center mx-auto text-slate-600 border border-slate-850">
+                <Search className="w-6 h-6" />
               </div>
-            ) : (
+              <div>
+                <h3 className="font-bold text-sm text-slate-200">Không tìm thấy người dân nào phù hợp</h3>
+                <p className="text-xs text-slate-400">Hãy thử xóa bộ lọc tìm kiếm hoặc nhấp "Thêm người dân" để tạo mới.</p>
+              </div>
+            </div>
+          ) : viewLayout === 'card' ? (
+            /* Card Grid Layout */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 p-4 bg-slate-950/20">
+              {filteredCustomers.map((cust) => {
+                const diffDaysBHYT = getDaysDiff(cust.expiryDate);
+                const diffDaysBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
+
+                const bhytPayments = (cust.paymentHistory || []).filter(p => !p.type || p.type === 'BHYT');
+                const bhxhPayments = (cust.paymentHistory || []).filter(p => p.type === 'BHXH');
+
+                const latestBHYTPayment = bhytPayments.length > 0
+                  ? bhytPayments.reduce((latest, current) => current.paymentDate > latest.paymentDate ? current : latest, bhytPayments[0])
+                  : null;
+
+                const latestBHXHPayment = bhxhPayments.length > 0
+                  ? bhxhPayments.reduce((latest, current) => current.paymentDate > latest.paymentDate ? current : latest, bhxhPayments[0])
+                  : null;
+
+                const focalDiffDays = (filterType === 'BHXH' && diffDaysBHXH !== null) ? diffDaysBHXH : diffDaysBHYT;
+
+                let badge = null;
+                if (cust.status === 'inactive') {
+                  badge = <span className="bg-slate-950 text-slate-500 border border-slate-800 text-[10px] font-semibold px-2 py-0.5 rounded-full select-none">Tạm ngưng</span>;
+                } else if (focalDiffDays < 0) {
+                  badge = <span className="bg-rose-955/60 text-rose-300 border border-rose-900/50 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">Quá hạn {-focalDiffDays} ngày</span>;
+                } else if (focalDiffDays === 0) {
+                  badge = <span className="bg-rose-955/60 text-rose-300 border border-rose-900/50 text-[10px] font-black px-2 py-0.5 rounded-full">Hết hạn hôm nay</span>;
+                } else if (focalDiffDays <= 3) {
+                  badge = <span className="bg-amber-955/60 text-amber-300 border border-amber-900/50 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">Còn {focalDiffDays} ngày</span>;
+                } else if (focalDiffDays <= 7) {
+                  badge = <span className="bg-yellow-50/10 text-yellow-300 border border-yellow-700/40 text-[10px] font-bold px-2 py-0.5 rounded-full">Còn {focalDiffDays} ngày</span>;
+                } else {
+                  badge = <span className="bg-emerald-950/60 text-emerald-300 border border-emerald-900/40 text-[10px] font-semibold px-2 py-0.5 rounded-full">Còn {focalDiffDays} ngày</span>;
+                }
+
+                return (
+                  <div 
+                    key={cust.id} 
+                    className="bg-slate-900 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-4 flex flex-col justify-between shadow-xs transition-all relative overflow-hidden group"
+                  >
+                    <div className="space-y-3">
+                      
+                      {/* Top Row: Gender + Name + Badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {renderGenderIcon(cust.gender)}
+                          <div>
+                            <h4 
+                              onClick={() => onOpenEditModal(cust)}
+                              className="font-extrabold text-white text-sm hover:text-emerald-400 cursor-pointer transition-colors line-clamp-1"
+                              title="Bấm để xem/chỉnh sửa"
+                            >
+                              {cust.name}
+                            </h4>
+                            {cust.birthday && (
+                              <p className="text-[10px] text-slate-400 font-mono">
+                                📅 {cust.birthday.includes('-') ? cust.birthday.split('-').reverse().join('/') : cust.birthday}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          {badge}
+                          {cust.hasBHXH && (
+                            <span className="text-[7px] font-black tracking-wider uppercase bg-indigo-950/60 text-indigo-300 border border-indigo-900/50 px-1.5 py-0.2 rounded">BHYT+BHXH</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Contact & IDs Box */}
+                      <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850 space-y-2">
+                        
+                        {/* Phone & CCCD */}
+                        <div className="flex items-center justify-between text-xs">
+                          <a 
+                            href={`tel:${cust.phone}`}
+                            className="font-mono text-emerald-400 font-bold hover:underline flex items-center gap-1 text-[11px]"
+                            title="Bấm để gọi điện"
+                          >
+                            📞 <span className="select-all">{cust.phone}</span>
+                          </a>
+
+                          {cust.cccd ? (
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              CCCD: <span className="text-slate-200 select-all">{cust.cccd}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">Chưa ghi CCCD</span>
+                          )}
+                        </div>
+
+                        {/* Insurance Cards & Dates */}
+                        <div className="space-y-1.5 pt-1.5 border-t border-slate-850/60 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-slate-300 font-medium">
+                              <span className="text-[8px] font-black bg-emerald-955 text-emerald-300 border border-emerald-900 px-1 py-0.2 rounded select-none">BHYT</span>
+                              <span className="font-mono text-[10px] select-all">{cust.insuranceCode || 'Chưa có mã'}</span>
+                            </span>
+                            <span className="font-mono font-bold text-slate-200">Hạn: {cust.expiryDate}</span>
+                          </div>
+
+                          {cust.hasBHXH && (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-850/40">
+                              <span className="flex items-center gap-1 text-indigo-300 font-medium">
+                                <span className="text-[8px] font-black bg-indigo-950 text-indigo-300 border border-indigo-900 px-1 py-0.2 rounded select-none">BHXH</span>
+                                <span className="font-mono text-[10px] select-all">{cust.insuranceCodeBHXH || 'Chưa có mã'}</span>
+                              </span>
+                              <span className="font-mono font-bold text-indigo-300">Hạn: {cust.expiryDateBHXH || '---'}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Recent Payment & Address */}
+                        {(latestBHYTPayment || cust.address || cust.notes) && (
+                          <div className="pt-1.5 border-t border-slate-850/40 space-y-1 text-[10px] text-slate-400">
+                            {latestBHYTPayment && (
+                              <div className="flex items-center justify-between text-slate-300 font-mono">
+                                <span>Nộp gần nhất ({latestBHYTPayment.paymentDate}):</span>
+                                <span className="font-bold text-emerald-400">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
+                              </div>
+                            )}
+                            {cust.address && (
+                              <p className="truncate">📍 {cust.address}</p>
+                            )}
+                            {cust.notes && (
+                              <p className="italic text-slate-500 truncate">📝 {cust.notes}</p>
+                            )}
+                          </div>
+                        )}
+
+                      </div>
+
+                      {/* Reminder status log */}
+                      <div className="flex items-center justify-between text-[10px]">
+                        {cust.lastRemindedDate ? (
+                          <span className="text-amber-300 font-semibold bg-amber-955/40 border border-amber-900/40 px-2 py-0.5 rounded-lg">
+                            ✓ Đã nhắc: {cust.lastRemindedDate} ({cust.lastRemindedChannel})
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic bg-slate-950/40 px-2 py-0.5 rounded-lg border border-slate-850">
+                            Chưa gửi nhắc hạn
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyCustomerDetails(cust, e)}
+                          className="text-slate-400 hover:text-emerald-400 font-mono flex items-center gap-1 hover:underline cursor-pointer"
+                          title="Sao chép họ tên, mã BHXH, ngày sinh"
+                        >
+                          {copiedCustId === cust.id ? (
+                            <span className="text-emerald-400 font-bold">✓ Đã copy</span>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy thông tin</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Card Actions Footer */}
+                    <div className="mt-3 pt-2.5 border-t border-slate-850 flex items-center justify-between gap-1.5">
+                      {cust.status === 'active' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveReminderCust(cust);
+                            const defaultType: 'BHYT' | 'BHXH' = 
+                              (filterType === 'BHXH' && cust.hasBHXH) ? 'BHXH'
+                              : (!cust.insuranceCode && cust.hasBHXH) ? 'BHXH'
+                              : 'BHYT';
+                            setReminderInsType(defaultType);
+                            window.scrollTo({ top: 120, behavior: 'smooth' });
+                          }}
+                          className="flex-1 py-1.5 px-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-transform active:scale-95"
+                          title="Soạn tin nhắn Zalo/SMS nhắc hạn tái tục"
+                        >
+                          💬 Nhắc Zalo
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => onOpenEditModal(cust)}
+                        className="py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 cursor-pointer transition-colors"
+                        title="Chỉnh sửa hoặc xem lịch sử biên nhận"
+                      >
+                        📁 Sửa
+                      </button>
+
+                      {deleteConfirmId === cust.id ? (
+                        <div className="flex items-center gap-1 bg-rose-950 border border-rose-800 rounded-xl p-0.5 animate-fade-in">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onDeleteCustomer(cust.id);
+                              setDeleteConfirmId(null);
+                            }}
+                            className="text-[10px] font-bold text-white bg-rose-600 hover:bg-rose-500 px-2 py-1 rounded-lg cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="text-[10px] text-slate-400 hover:text-white px-1.5 py-1 rounded cursor-pointer"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmId(cust.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-rose-900/40"
+                          title="Xóa hồ sơ người dân"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Table View Fallback */
+            <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-800 text-left table-auto">
                 <thead className="bg-slate-950/40 text-[10px] text-slate-400 uppercase font-black tracking-wider border-b border-slate-850">
                   <tr>
@@ -1612,7 +1923,6 @@ export default function Dashboard({
                     const diffDaysBHYT = getDaysDiff(cust.expiryDate);
                     const diffDaysBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
                     
-                    // Find most recent BHYT and BHXH payments
                     const bhytPayments = (cust.paymentHistory || []).filter(p => !p.type || p.type === 'BHYT');
                     const bhxhPayments = (cust.paymentHistory || []).filter(p => p.type === 'BHXH');
                     
@@ -1624,13 +1934,11 @@ export default function Dashboard({
                       ? bhxhPayments.reduce((latest, current) => current.paymentDate > latest.paymentDate ? current : latest, bhxhPayments[0])
                       : null;
                     
-                    // Determine which insurance is being focused for countdown display
                     const focalDiffDays = (filterType === 'BHXH' && diffDaysBHXH !== null) ? diffDaysBHXH : diffDaysBHYT;
                     
-                    // visual countdown badge
                     let badge = null;
                     if (cust.status === 'inactive') {
-                      badge = <span className="bg-slate-950 text-slate-500 border border-slate-800 text-[10px] font-semibold px-2 py-0.5 rounded-full select-none">Tạm ngưng</span>;
+                      badge = <span className="bg-slate-955 text-slate-500 border border-slate-800 text-[10px] font-semibold px-2 py-0.5 rounded-full select-none">Tạm ngưng</span>;
                     } else if (focalDiffDays < 0) {
                       badge = <span className="bg-rose-955/55 text-rose-300 border border-rose-900/40 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">Quá hạn {-focalDiffDays} ngày</span>;
                     } else if (focalDiffDays === 0) {
@@ -1644,12 +1952,10 @@ export default function Dashboard({
                     }
 
                     return (
-                      <tr key={cust.id} className="hover:bg-slate-950/40 transition-colors">
+                      <tr key={cust.id} className="hover:bg-slate-955/40 transition-colors">
                         
-                        {/* Integrated Resident, Insurance Cards & CCCD cell */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-2">
-                            {/* Line 1: Gender Icon + Họ Tên + dual status */}
                             <div className="flex items-center gap-2 flex-wrap">
                               {renderGenderIcon(cust.gender)}
                               <span 
@@ -1664,10 +1970,10 @@ export default function Dashboard({
                                 onClick={(e) => handleCopyCustomerDetails(cust, e)}
                                 className={`p-1 rounded transition-all cursor-pointer flex items-center justify-center shrink-0 ${
                                   copiedCustId === cust.id
-                                    ? 'text-emerald-400 bg-emerald-950/60 scale-90 border border-emerald-500/30'
+                                    ? 'text-emerald-400 bg-emerald-955/60 scale-90 border border-emerald-500/30'
                                     : 'text-slate-500 hover:text-emerald-400 hover:bg-slate-900'
                                 }`}
-                                title="Sao chép nhanh thông tin (Họ tên, Mã BHXH, Ngày sinh, Ghi chú)"
+                                title="Sao chép nhanh thông tin"
                               >
                                 {copiedCustId === cust.id ? (
                                   <Check className="w-3.5 h-3.5 animate-pulse" />
@@ -1680,10 +1986,9 @@ export default function Dashboard({
                               )}
                             </div>
 
-                             {/* Line 2: Birthday + Clickable SĐT link */}
                             <div className="text-slate-400 text-[11px] font-mono flex flex-wrap items-center gap-x-2.5 gap-y-1.5 font-sans">
                               {cust.birthday && (
-                                <span className="text-[10px] text-slate-300 font-medium bg-slate-950/40 border border-slate-850/50 px-1.5 py-0.5 rounded flex items-center gap-1 font-mono" title="Ngày tháng năm sinh">
+                                <span className="text-[10px] text-slate-300 font-medium bg-slate-955/40 border border-slate-850/50 px-1.5 py-0.5 rounded flex items-center gap-1 font-mono">
                                   <span>📅</span>
                                   <span>{cust.birthday.includes('-') ? cust.birthday.split('-').reverse().join('/') : cust.birthday}</span>
                                 </span>
@@ -1691,106 +1996,71 @@ export default function Dashboard({
 
                               <a 
                                 href={`tel:${cust.phone}`}
-                                className="text-[10px] font-extrabold text-emerald-405 hover:text-emerald-350 bg-emerald-950/30 hover:bg-emerald-950/50 border border-emerald-900/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all font-mono"
-                                title={`Bấm để gọi điện cho số điện thoại ${cust.phone}`}
+                                className="text-[10px] font-extrabold text-emerald-405 hover:text-emerald-350 bg-emerald-955/30 hover:bg-emerald-955/50 border border-emerald-900/40 px-2 py-0.5 rounded flex items-center gap-1 transition-all font-mono"
                               >
                                 📞 <span className="underline select-all">{cust.phone}</span>
                               </a>
 
                               {cust.address && (
-                                <span className="text-[10px] text-slate-300 font-medium bg-indigo-950/20 border border-indigo-900/40 px-1.5 py-0.5 rounded flex items-center gap-1" title="Địa chỉ thường trú">
+                                <span className="text-[10px] text-slate-300 font-medium bg-indigo-950/20 border border-indigo-900/40 px-1.5 py-0.5 rounded flex items-center gap-1">
                                   <span>📍</span>
                                   <span>{cust.address}</span>
                                 </span>
                               )}
                             </div>
 
-                            {/* Line 3: CCCD + Insurance Codes */}
                             <div className="flex flex-wrap items-center gap-1.5">
                               {cust.cccd ? (
-                                <span className="text-[10px] font-mono font-medium text-slate-300 bg-slate-950/45 border border-slate-850 px-1.5 py-0.5 rounded flex items-center gap-1" title="Số định danh cá nhân / CCCD">
+                                <span className="text-[10px] font-mono font-medium text-slate-300 bg-slate-955/45 border border-slate-850 px-1.5 py-0.5 rounded flex items-center gap-1">
                                   <span className="text-slate-500 font-bold select-none text-[9px]">CCCD:</span>
                                   <span className="select-all">{cust.cccd}</span>
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-mono text-slate-500 italic bg-slate-950/30 border border-slate-900/30 px-1.5 py-0.5 rounded">
+                                <span className="text-[10px] font-mono text-slate-500 italic bg-slate-955/30 border border-slate-900/30 px-1.5 py-0.5 rounded">
                                   ⚠️ Chưa ghi CCCD
                                 </span>
                               )}
 
-                              <span className="text-[10px] font-mono font-medium text-slate-300 bg-emerald-950/30 border border-emerald-900/35 px-1.5 py-0.5 rounded flex items-center gap-1" title="Mã thẻ BHYT">
+                              <span className="text-[10px] font-mono font-medium text-slate-300 bg-emerald-955/30 border border-emerald-900/35 px-1.5 py-0.5 rounded flex items-center gap-1">
                                 <span className="text-[8px] font-black bg-emerald-955 text-emerald-300 border border-emerald-900 px-1 py-0.2 rounded scale-90 select-none">BHYT</span>
                                 <span className="select-all">{cust.insuranceCode || 'Chưa ghi mã'}</span>
                               </span>
 
                               {cust.hasBHXH && (
-                                <span className="text-[10px] font-mono font-medium text-slate-300 bg-indigo-950/30 border border-indigo-900/35 px-1.5 py-0.5 rounded flex items-center gap-1" title="Mã định danh BHXH">
+                                <span className="text-[10px] font-mono font-medium text-slate-300 bg-indigo-950/30 border border-indigo-900/35 px-1.5 py-0.5 rounded flex items-center gap-1">
                                   <span className="text-[8px] font-black bg-indigo-950 text-indigo-300 border border-indigo-900 px-1 py-0.2 rounded scale-90 select-none">BHXH</span>
                                   <span className="select-all">{cust.insuranceCodeBHXH || 'Chưa ghi mã'}</span>
                                 </span>
                               )}
                             </div>
 
-                            {/* Line 4: Reminder status log */}
                             {cust.lastRemindedDate ? (
                               <div className="flex items-center gap-1.5 text-[9px] text-amber-300/90 font-extrabold bg-amber-955/40 border border-amber-900/40 rounded px-1.5 py-0.5 w-fit">
-                                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-                                </span>
                                 <span>Đã nhắc: {cust.lastRemindedDate} ({cust.lastRemindedChannel}) - {cust.lastRemindedType}</span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold bg-slate-950/40 border border-slate-850/50 rounded px-1.5 py-0.5 w-fit select-none">
-                                <span className="h-1.5 w-1.5 bg-slate-700 rounded-full shrink-0"></span>
+                              <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold bg-slate-955/40 border border-slate-850/50 rounded px-1.5 py-0.5 w-fit select-none">
                                 <span>Chưa gửi nhắc hạn</span>
                               </div>
                             )}
                           </div>
                         </td>
 
-                        {/* Đóng gần nhất */}
                         <td className="px-6 py-4">
                           <div className="space-y-2 text-xs">
                             {latestBHYTPayment ? (
                               <div className="space-y-0.5">
-                                <div className="flex items-center gap-1.5" title={`Ngày nộp: ${latestBHYTPayment.paymentDate}`}>
-                                  <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-emerald-950 text-emerald-300 border border-emerald-900 select-none">BHYT</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-emerald-955 text-emerald-300 border border-emerald-900 select-none">BHYT</span>
                                   <span className="font-mono text-emerald-400 font-extrabold">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
-                                  <span className="text-[10px] text-slate-500 font-mono">({latestBHYTPayment.periodMonths}th)</span>
                                 </div>
-                                {latestBHYTPayment.nguoiNop && (
-                                  <div className="text-[10px] text-slate-400 pl-1 font-medium truncate max-w-[170px]" title={`Người nộp: ${latestBHYTPayment.nguoiNop}`}>
-                                    Nộp: <span className="text-slate-300 font-bold">{latestBHYTPayment.nguoiNop}</span>
-                                  </div>
-                                )}
                               </div>
                             ) : (
-                              <div className="text-[10px] text-slate-500 italic select-none">BHYT: Chưa đóng</div>
+                              <div className="text-[10px] text-slate-500 italic">BHYT: Chưa đóng</div>
                             )}
-                            
-                            {cust.hasBHXH ? (
-                              latestBHXHPayment ? (
-                                <div className="space-y-0.5 pt-1.5 border-t border-slate-800/40">
-                                  <div className="flex items-center gap-1.5" title={`Ngày nộp: ${latestBHXHPayment.paymentDate}`}>
-                                    <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-indigo-950 text-indigo-300 border border-indigo-900 select-none">BHXH</span>
-                                    <span className="font-mono text-indigo-400 font-extrabold">{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
-                                    <span className="text-[10px] text-slate-500 font-mono">({latestBHXHPayment.periodMonths}th)</span>
-                                  </div>
-                                  {latestBHXHPayment.nguoiNop && (
-                                    <div className="text-[10px] text-slate-400 pl-1 font-medium truncate max-w-[170px]" title={`Người nộp: ${latestBHXHPayment.nguoiNop}`}>
-                                      Nộp: <span className="text-slate-300 font-bold">{latestBHXHPayment.nguoiNop}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-slate-500 italic select-none pt-1 border-t border-slate-800/40">BHXH: Chưa đóng</div>
-                              )
-                            ) : null}
                           </div>
                         </td>
 
-                        {/* Relative Expiry Dates */}
                         <td className="px-6 py-4">
                           <div className="space-y-1 text-[11px]">
                             <div className="flex items-center justify-between gap-2">
@@ -1798,7 +2068,7 @@ export default function Dashboard({
                               <span className="font-mono text-slate-300 font-bold">{cust.expiryDate}</span>
                             </div>
                             {cust.hasBHXH && cust.expiryDateBHXH && (
-                              <div className="flex items-center justify-between gap-2 pt-0.5 animate-fade-in">
+                              <div className="flex items-center justify-between gap-2 pt-0.5">
                                 <span className="text-indigo-400 text-[10px]">Hạn BHXH:</span>
                                 <span className="font-mono text-indigo-300 font-bold">{cust.expiryDateBHXH}</span>
                               </div>
@@ -1806,19 +2076,12 @@ export default function Dashboard({
                           </div>
                         </td>
 
-                        {/* Real countdown indicator */}
                         <td className="px-6 py-4">
                           <div className="space-y-1">
                             <div>{badge}</div>
-                            {cust.hasBHXH && filterType === 'All' && (
-                              <div className="text-[9px] text-slate-500 font-mono leading-none">
-                                (Đếm ngược theo {focalDiffDays === diffDaysBHXH ? 'BHXH' : 'BHYT'})
-                              </div>
-                            )}
                           </div>
                         </td>
 
-                        {/* Actions block list */}
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             {cust.status === 'active' && (
@@ -1826,42 +2089,37 @@ export default function Dashboard({
                                 type="button"
                                 onClick={() => {
                                   setActiveReminderCust(cust);
-                                  setReminderInsType(filterType === 'BHXH' && cust.hasBHXH ? 'BHXH' : 'BHYT');
-                                  // Scroll automatically to reminder box
+                                  const defaultType: 'BHYT' | 'BHXH' = 
+                                    (filterType === 'BHXH' && cust.hasBHXH) ? 'BHXH'
+                                    : (!cust.insuranceCode && cust.hasBHXH) ? 'BHXH'
+                                    : 'BHYT';
+                                  setReminderInsType(defaultType);
                                   window.scrollTo({ top: 120, behavior: 'smooth' });
                                 }}
-                                className="text-[10px] font-black text-amber-300 bg-amber-955/50 border border-amber-900 hover:bg-amber-900/40 px-2 py-1 rounded-lg transition-transform active:scale-95 cursor-pointer flex items-center gap-1"
-                                title="Soạn tin nhắn nhắc nhở"
+                                className="text-[10px] font-black text-amber-300 bg-amber-955/50 border border-amber-900 hover:bg-amber-900/40 px-2 py-1 rounded-lg cursor-pointer"
                               >
-                                🔔 Nhắc đóng phí
+                                💬 Nhắc Zalo
                               </button>
                             )}
 
                             <button
                               type="button"
                               onClick={() => onOpenEditModal(cust)}
-                              className="text-[10px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-900/60 hover:bg-emerald-900/40 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                              title="Xem chi tiết, gộp biên nhận và chỉnh sửa"
+                              className="text-[10px] font-bold text-emerald-300 bg-emerald-955/50 border border-emerald-900/60 hover:bg-emerald-900/40 px-2 py-1 rounded-lg cursor-pointer"
                             >
-                              📁 Biên nhận / Sửa
+                              📁 Sửa
                             </button>
 
                             <button
                               type="button"
                               onClick={(e) => handleCopyCustomerDetails(cust, e)}
-                              className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 border ${
-                                copiedCustId === cust.id
-                                  ? 'text-teal-300 bg-teal-950/50 border-teal-500/85 scale-95'
-                                  : 'text-sky-300 bg-sky-950/50 border-sky-900/50 hover:bg-sky-900/40 hover:text-white'
-                              }`}
-                              title="Sao chép nhanh thông tin dưới dạng: Họ tên, Mã BHXH (10 số cuối BHYT hoặc mã BHXH), Ngày sinh, Ghi chú"
+                              className="text-[10px] font-bold text-sky-300 bg-sky-955/50 border border-sky-900/50 hover:bg-sky-900/40 px-2 py-1 rounded-lg cursor-pointer"
                             >
-                              <Copy className="w-3 h-3" />
-                              {copiedCustId === cust.id ? 'Đã copy!' : 'Copy nhanh'}
+                              Copy
                             </button>
-                            
+
                             {deleteConfirmId === cust.id ? (
-                              <div className="flex items-center gap-1 bg-rose-950/60 border border-slate-800 rounded-lg p-1 animate-fade-in">
+                              <div className="flex items-center gap-1 bg-slate-900 border border-rose-800 rounded-lg p-1 animate-fade-in">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1902,18 +2160,22 @@ export default function Dashboard({
                   })}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Table footer stats summary info */}
-          <div className="px-6 py-3.5 bg-slate-950/50 border-t border-slate-850 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-2">
-            <p>
+          <div className="px-3 sm:px-6 py-3.5 bg-slate-950/50 border-t border-slate-850 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-2 min-w-0 max-w-full">
+            <p className="text-center sm:text-left">
               Hiển thị <strong className="text-slate-200">{filteredCustomers.length}</strong> trên{' '}
               <strong className="text-slate-200">{customers.length}</strong> tài liệu người dân.
             </p>
-            <div className="flex gap-4">
-              <span>Đại lý: <strong className="text-emerald-400">{settings.agencyName}</strong></span>
-              <span>Hotline liên hệ: <strong className="text-emerald-400 font-mono">{settings.agentPhone}</strong></span>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-1 sm:gap-4 text-center sm:text-left min-w-0 max-w-full">
+              <span className="truncate max-w-[280px] sm:max-w-md" title={settings.agencyName}>
+                Đại lý: <strong className="text-emerald-400">{settings.agencyName}</strong>
+              </span>
+              <span className="shrink-0">
+                Hotline liên hệ: <strong className="text-emerald-400 font-mono">{settings.agentPhone}</strong>
+              </span>
             </div>
           </div>
 
@@ -1923,10 +2185,44 @@ export default function Dashboard({
 
       {/* Tiny clean footer workspace branding */}
       <footer className="bg-slate-950 border-t border-slate-900 mt-12 py-6 text-center text-xs text-slate-500">
-        <p>Phần mềm quản lý "Lws nhắc hạn" phát triển bởi <strong>Long Web Studio</strong>.</p>
-        <p className="text-[10px] text-slate-400 mt-1">Hệ thống bảo mật dữ liệu lưu cục bộ trong trình duyệt của bạn (Local Storage) • Không thu thập dữ liệu nội bộ.</p>
+        <div className="max-w-7xl mx-auto space-y-1.5 px-4">
+          <p>
+            Phần mềm <strong>"LWS - Sổ thu bảo hiểm"</strong> dành cho nhân viên thu BHXH, BHYT. Phát triển bởi{' '}
+            <a href="https://longwebstudio.io.vn" target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline font-semibold">
+              Freelancer Long Web Studio
+            </a>{' '}
+            (Zalo: <strong className="text-white font-mono">0966570913</strong> • Email: <strong className="text-white">contact@longwebstudio.io.vn</strong> • Website: <strong className="text-white">longwebstudio.io.vn</strong>)
+          </p>
+          <div className="flex items-center justify-center gap-3 text-[11px] text-slate-400">
+            <button 
+              type="button" 
+              onClick={() => setShowTermsModal(true)} 
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
+              Điều khoản dịch vụ
+            </button>
+            <span>•</span>
+            <button 
+              type="button" 
+              onClick={() => setShowTermsModal(true)} 
+              className="hover:text-emerald-400 transition-colors cursor-pointer"
+            >
+              Chính sách bảo mật
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-500">Hệ thống bảo mật dữ liệu lưu cục bộ trong trình duyệt của bạn (Local Storage) • Không thu thập dữ liệu nội bộ.</p>
+        </div>
       </footer>
 
+      <QuickGuideModal 
+        isOpen={showQuickGuideModal} 
+        onClose={() => setShowQuickGuideModal(false)} 
+      />
+
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
     </div>
   );
 }

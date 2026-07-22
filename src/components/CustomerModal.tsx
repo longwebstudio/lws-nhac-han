@@ -56,8 +56,8 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const getSuggestedPremium = () => {
     const months = parseInt(periodMonths) || 12;
     if (type === 'BHYT') {
-      // Vietnam BHYT Hộ gia đình (dynamic from settings, otherwise default to 2,340,000 VND base salary)
-      const baseSalary = settings.baseSalaryBHYT || 2340000;
+      // Vietnam BHYT Hộ gia đình (dynamic from settings, default 2,530,000 VND base salary)
+      const baseSalary = settings.baseSalaryBHYT || 2530000;
       const baseMonthly = Math.round(baseSalary * 0.045);
       let multiplier = 1.0;
       let label = 'Thành viên thứ 1 (Mức đóng 100%)';
@@ -84,19 +84,12 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       };
     } else {
       // Vietnam Voluntary BHXH
-      // State supports a fixed VND amount based on the selected tier from settings
-      let supportAmount = settings.supportOtherBHXH !== undefined ? settings.supportOtherBHXH : 33000;
-      let supportLabel = 'Đối tượng khác (10%)';
+      let supportAmount = settings.supportOtherBHXH !== undefined ? settings.supportOtherBHXH : 132000;
+      let supportLabel = `Đối tượng khác (${supportAmount.toLocaleString()}đ/tháng)`;
       
       if (bhxhSupportTier === 'none') {
         supportAmount = 0;
         supportLabel = 'Không nhận hỗ trợ';
-      } else if (bhxhSupportTier === 'near_poor') {
-        supportAmount = settings.supportNearPoorBHXH !== undefined ? settings.supportNearPoorBHXH : 82500;
-        supportLabel = 'Hộ cận nghèo (25%)';
-      } else if (bhxhSupportTier === 'poor') {
-        supportAmount = settings.supportPoorBHXH !== undefined ? settings.supportPoorBHXH : 99000;
-        supportLabel = 'Hộ nghèo (30%)';
       }
       
       const rawCostPerMonth = Math.round(bhxhIncomeChoice * 0.22);
@@ -105,7 +98,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       
       return {
         amount: totalCost,
-        note: `BHXH tự nguyện - Thu nhập lựa chọn: ${bhxhIncomeChoice.toLocaleString()}đ/tháng | Hỗ trợ: ${supportLabel} (${supportAmount.toLocaleString()}đ/tháng) | Chu kỳ đóng: ${months} tháng`
+        note: `BHXH tự nguyện - Thu nhập lựa chọn: ${bhxhIncomeChoice.toLocaleString()}đ/tháng | Hỗ trợ: ${supportLabel} | Chu kỳ đóng: ${months} tháng`
       };
     }
   };
@@ -211,6 +204,11 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       return;
     }
 
+    if (!insuranceCode.trim() && (!hasBHXH || !insuranceCodeBHXH.trim())) {
+      setModalError('Vui lòng nhập Mã thẻ BHYT hoặc Mã BHXH Tự nguyện');
+      return;
+    }
+
     const savedCustomer: Customer = {
       id: customer?.id || `cust-${Date.now()}`,
       name: name.trim(),
@@ -218,9 +216,9 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       cccd: cccd.trim(),
       insuranceCode: insuranceCode.trim(),
       insuranceCodeBHXH: hasBHXH ? insuranceCodeBHXH.trim() : undefined,
-      hasBHXH,
-      expiryDate,
-      expiryDateBHXH: hasBHXH ? expiryDateBHXH : undefined,
+      hasBHXH: hasBHXH || (!insuranceCode.trim() && !!insuranceCodeBHXH.trim()),
+      expiryDate: expiryDate || new Date().toISOString().split('T')[0],
+      expiryDateBHXH: hasBHXH ? (expiryDateBHXH || new Date().toISOString().split('T')[0]) : undefined,
       createdAt: customer?.createdAt || new Date().toISOString().split('T')[0],
       notes: notes.trim(),
       status,
@@ -373,24 +371,22 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Mã số thẻ BHYT *</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Mã số thẻ BHYT</label>
                 <input
                   type="text"
                   value={insuranceCode}
                   onChange={(e) => setInsuranceCode(e.target.value.toUpperCase())}
                   placeholder="Ví dụ: GD3910248..."
-                  required
                   className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Hạn đóng BHYT *</label>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">Hạn đóng BHYT</label>
                 <input
                   type="date"
                   value={expiryDate}
                   onChange={(e) => setExpiryDate(e.target.value)}
-                  required
                   className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white font-mono"
                 />
               </div>
@@ -655,7 +651,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       <div className="col-span-2 bg-slate-950/60 rounded-xl p-3 border border-slate-850 space-y-2.5">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">🧮 MÁY TÍNH ĐỊNH MỨC BHYT HỘ GIA ĐÌNH</span>
-                          <span className="text-[9px] text-slate-500 font-medium">Lương cơ sở: {(settings.baseSalaryBHYT || 2340000).toLocaleString()}đ</span>
+                          <span className="text-[9px] text-slate-500 font-medium">Lương cơ sở: {(settings.baseSalaryBHYT || 2530000).toLocaleString()}đ</span>
                         </div>
                         <div className="space-y-1">
                           <label className="block text-[9px] font-bold text-slate-400">Thứ tự tham gia trong gia đình:</label>
@@ -697,7 +693,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       <div className="col-span-2 bg-slate-950/60 rounded-xl p-3 border border-slate-850 space-y-2.5">
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">🧮 MÁY TÍNH ĐỊNH MỨC BHXH TỰ NGUYỆN (22%)</span>
-                          <span className="text-[9px] text-slate-500 font-medium">Nhà nước hỗ trợ theo chuẩn nghèo nông thôn</span>
+                          <span className="text-[9px] text-slate-500 font-medium">Hỗ trợ Nhà nước: {(settings.supportOtherBHXH || 132000).toLocaleString()}đ/tháng</span>
                         </div>
                         
                         <div className="space-y-1">
@@ -705,7 +701,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                           <div className="grid grid-cols-4 gap-1">
                             {[
                               { label: `Chuẩn nghèo (${((settings.povertyStandardBHXH || 1500000)/1000000).toFixed(2).replace(/\.00$/, '')}M)`, value: settings.povertyStandardBHXH || 1500000 },
-                              { label: `Lương cơ sở (${((settings.baseSalaryBHYT || 2340000)/1000000).toFixed(2).replace(/\.00$/, '')}M)`, value: settings.baseSalaryBHYT || 2340000 },
+                              { label: `Lương cơ sở (${((settings.baseSalaryBHYT || 2530000)/1000000).toFixed(2).replace(/\.00$/, '')}M)`, value: settings.baseSalaryBHYT || 2530000 },
                               { label: 'Mức 3 triệu', value: 3000000 },
                               { label: 'Mức 5 triệu', value: 5000000 },
                             ].map((income) => (
@@ -727,18 +723,16 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
 
                         <div className="space-y-1">
                           <label className="block text-[9px] font-bold text-slate-400">Chọn nhóm nhận hỗ trợ của Nhà nước:</label>
-                          <div className="grid grid-cols-4 gap-1">
+                          <div className="grid grid-cols-2 gap-1.5">
                             {[
-                              { label: 'Đối tượng khác (10%)', value: 'other' },
-                              { label: 'Hộ cận nghèo (25%)', value: 'near_poor' },
-                              { label: 'Hộ nghèo (30%)', value: 'poor' },
-                              { label: 'Không (0%)', value: 'none' },
+                              { label: `Đối tượng khác (${(settings.supportOtherBHXH || 132000).toLocaleString()}đ/tháng)`, value: 'other' },
+                              { label: 'Không nhận hỗ trợ (0đ)', value: 'none' },
                             ].map((tier) => (
                               <button
                                 key={tier.value}
                                 type="button"
                                 onClick={() => setBhxhSupportTier(tier.value)}
-                                className={`py-1 text-[9px] font-semibold rounded transition-all cursor-pointer border text-center ${
+                                className={`py-1.5 text-[10px] font-semibold rounded transition-all cursor-pointer border text-center ${
                                   bhxhSupportTier === tier.value
                                     ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
                                     : 'bg-slate-900 text-slate-400 hover:bg-slate-850 border-slate-800'

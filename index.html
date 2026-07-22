@@ -1,21 +1,102 @@
-
 <!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Ứng dụng nhắc hạn đóng BHYT, BHXH cho đại lý và điểm thu. Quản lý khách hàng, tự động tạo tin nhắn nhắc nhở qua Zalo, SMS." />
-    <meta name="keywords" content="phần mềm quản lý thu BHYT, BHXH, ứng dụng nhắc hạn, đại lý thu, điểm thu, BHYT hộ gia đình, BHXH tự nguyện, Zalo, SMS" />
-    <title>Lws Nhắc Hạn - Phần Mềm Quản Lý Thu BHYT, BHXH</title>
-    <meta property="og:title" content="Lws Nhắc Hạn - Phần Mềm Quản Lý Thu BHYT, BHXH" />
-    <meta property="og:description" content="Ứng dụng thông minh giúp đại lý, điểm thu bảo hiểm quản lý và nhắc nhở khách hàng đóng phí BHYT, BHXH dễ dàng, hiệu quả." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#090d16" />
+    
+    <!-- SEO Primary Meta Tags -->
+    <title>LWS Sổ Thu Bảo Hiểm - Phần Mềm Quản Lý BHYT & BHXH Cho Nhân Viên Thu</title>
+    <meta name="title" content="LWS Sổ Thu Bảo Hiểm - Phần Mềm Quản Lý BHYT & BHXH Cho Nhân Viên Thu" />
+    <meta name="description" content="Sổ thu công nghệ chuyên nghiệp dành cho Nhân viên thu BHXH, BHYT. Tự động tính định mức BHYT hộ gia đình (lương cơ sở 2.530.000đ), nhắc đáo hạn Zalo/SMS 3 giây, quản lý danh sách không giới hạn." />
+    <meta name="keywords" content="LWS Sổ thu bảo hiểm, sổ thu bảo hiểm, nhân viên thu bhxh bhyt, phần mềm quản lý BHYT, quản lý BHXH tự nguyện, ứng dụng nhắc hạn bảo hiểm, nhân viên thu BHYT, điểm thu BHXH, BHYT hộ gia đình, nhắc hạn Zalo SMS, tra cứu thẻ BHYT, Long Web Studio" />
+    <meta name="author" content="Freelancer Long Web Studio" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://app.longwebstudio.io.vn/" />
+
+    <!-- Open Graph / Facebook / Zalo Share Meta Tags -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LWS Sổ Thu Bảo Hiểm" />
+    <meta property="og:url" content="https://app.longwebstudio.io.vn/" />
+    <meta property="og:title" content="LWS Sổ Thu Bảo Hiểm - Giải Pháp Quản Lý Thu BHYT & BHXH Tự Nguyện" />
+    <meta property="og:description" content="Phần mềm quản lý thu BHYT Hộ gia đình & BHXH Tự nguyện miễn phí cho Nhân viên thu. Tự động tính định mức giảm trừ, tạo lời nhắn Zalo nhắc hạn trong 3 giây, sao lưu WordPress Cloud." />
     <meta property="og:image" content="https://i0.wp.com/longwebstudio.net/wordpress/wp-content/uploads/2026/06/lws-nhac-han-banner.png?fit=1200%2C630&ssl=1" />
-    <meta property="og:url" content="https://nhachan.longwebstudio.net/" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <meta property="og:image:secure_url" content="https://i0.wp.com/longwebstudio.net/wordpress/wp-content/uploads/2026/06/lws-nhac-han-banner.png?fit=1200%2C630&ssl=1" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LWS Sổ Thu Bảo Hiểm - Giao diện quản lý BHYT BHXH" />
+    <meta property="og:locale" content="vi_VN" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:domain" content="app.longwebstudio.io.vn" />
+    <meta name="twitter:url" content="https://app.longwebstudio.io.vn/" />
+    <meta name="twitter:title" content="LWS Sổ Thu Bảo Hiểm - Quản Lý & Nhắc Hạn BHYT BHXH" />
+    <meta name="twitter:description" content="Ứng dụng thông minh hỗ trợ nhân viên thu BHYT, BHXH tự nguyện tính toán mức đóng, quản lý danh sách và tự động gửi tin nhắn nhắc hạn qua Zalo." />
+    <meta name="twitter:image" content="https://i0.wp.com/longwebstudio.net/wordpress/wp-content/uploads/2026/06/lws-nhac-han-banner.png?fit=1200%2C630&ssl=1" />
+
+    <!-- Mobile & PWA Specs -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sổ Thu Bảo Hiểm" />
+    <meta name="application-name" content="LWS Sổ Thu Bảo Hiểm" />
+
+    <!-- Favicon & Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Structured Data (JSON-LD) for Google Search Rich Snippets -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "LWS Sổ Thu Bảo Hiểm",
+        "alternateName": "Sổ thu bảo hiểm BHYT BHXH - Long Web Studio",
+        "operatingSystem": "Web Browser, iOS, Android, Windows, macOS",
+        "applicationCategory": "BusinessApplication",
+        "description": "Ứng dụng chuyên nghiệp dành cho Nhân viên thu BHXH, BHYT hộ gia đình. Hỗ trợ nhập từ Excel, tính định mức hỗ trợ nhà nước (Lương cơ sở 2.530.000đ, Hỗ trợ BHXH 132.000đ/tháng) và tự động tạo tin nhắn nhắc hạn qua Zalo, SMS.",
+        "url": "https://app.longwebstudio.io.vn/",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "softwareVersion": "2026.7.0",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "VND",
+          "availability": "https://schema.org/InStock"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Freelancer Long Web Studio",
+          "url": "https://longwebstudio.io.vn",
+          "logo": "https://i0.wp.com/longwebstudio.net/wordpress/wp-content/uploads/2026/06/lws-nhac-han-banner.png?fit=1200%2C630&ssl=1",
+          "email": "contact@longwebstudio.io.vn",
+          "telephone": "+84966570913"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Trang chủ",
+            "item": "https://app.longwebstudio.io.vn/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Sổ thu BHYT & BHXH",
+            "item": "https://app.longwebstudio.io.vn/#app"
+          }
+        ]
+      }
+    ]
+    </script>
   </head>
   <body>
     <div id="root"></div>

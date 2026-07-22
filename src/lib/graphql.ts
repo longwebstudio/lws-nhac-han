@@ -18,14 +18,20 @@ export interface WPLoginResponse {
 }
 
 // Configurable WordPress GraphQL endpoints with reasonable defaults
-export const DEFAULT_ENDPOINT = 'https://longwebstudio.net/wordpress/rYkOy1HCCRD0JZZcrshVYaUR39QfcG15QWUC437BMM5Pk3gNLu';
+export const DEFAULT_ENDPOINT = 'https://longwebstudio.io.vn/wordpress/5ryt3z3skdlf';
 
 export function getStoredWordPressUrl(): string {
-  return DEFAULT_ENDPOINT;
+  const customUrl = localStorage.getItem('lws_wp_graphql_url');
+  return customUrl && customUrl.trim() ? customUrl.trim() : DEFAULT_ENDPOINT;
 }
 
 export function setStoredWordPressUrl(url: string) {
-  // Always use DEFAULT_ENDPOINT
+  const trimmed = url ? url.trim() : '';
+  if (!trimmed || trimmed === DEFAULT_ENDPOINT) {
+    localStorage.removeItem('lws_wp_graphql_url');
+  } else {
+    localStorage.setItem('lws_wp_graphql_url', trimmed);
+  }
 }
 
 export function getStoredWPToken(): string | null {

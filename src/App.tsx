@@ -19,6 +19,8 @@ import {
   getBackupFromWordPress, 
   WPUser 
 } from './lib/graphql';
+import { updateSEOTags } from './lib/seo';
+import SEOShareModal from './components/SEOShareModal';
 
 export default function App() {
   // core reactive states
@@ -37,6 +39,27 @@ export default function App() {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [selectedEditCustomer, setSelectedEditCustomer] = useState<Customer | null>(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
+
+  // Dynamic SEO & Open Graph Meta Tags Synchronizer
+  useEffect(() => {
+    if (view === 'landing') {
+      updateSEOTags({
+        title: 'LWS Sổ Thu Bảo Hiểm - Phần Mềm Quản Lý BHYT & BHXH Cho Nhân Viên Thu',
+        description: 'Sổ thu công nghệ chuyên nghiệp dành cho Nhân viên thu BHXH, BHYT. Tự động tính định mức BHYT hộ gia đình (lương cơ sở 2.530.000đ), nhắc đáo hạn Zalo/SMS 3 giây, quản lý danh sách không giới hạn.',
+        ogUrl: 'https://app.longwebstudio.io.vn/',
+        canonicalUrl: 'https://app.longwebstudio.io.vn/',
+      });
+    } else {
+      const agency = settings.agencyName || 'Đại Lý Thu BHXH, BHYT';
+      updateSEOTags({
+        title: `LWS Sổ Thu Bảo Hiểm - ${agency}`,
+        description: `Sổ thu điện tử quản lý ${customers.length} người dân đóng BHYT Hộ gia đình và BHXH Tự nguyện tại ${agency}. Tự động tạo tin nhắn Zalo nhắc hạn, tính định mức hỗ trợ chính xác.`,
+        ogUrl: 'https://app.longwebstudio.io.vn/#dashboard',
+        canonicalUrl: 'https://app.longwebstudio.io.vn/',
+      });
+    }
+  }, [view, settings.agencyName, customers.length]);
 
   // load state from LocalStorage on mount
   useEffect(() => {
@@ -61,14 +84,12 @@ export default function App() {
         const parsed = JSON.parse(storedSettings);
         // Migrate old default settings to current request
         const merged = {
-          baseSalaryBHYT: INITIAL_SETTINGS.baseSalaryBHYT,
-          povertyStandardBHXH: INITIAL_SETTINGS.povertyStandardBHXH,
-          supportPoorBHXH: INITIAL_SETTINGS.supportPoorBHXH,
-          supportNearPoorBHXH: INITIAL_SETTINGS.supportNearPoorBHXH,
-          supportOtherBHXH: INITIAL_SETTINGS.supportOtherBHXH,
-          autoBackupWordPress: INITIAL_SETTINGS.autoBackupWordPress,
-          lastAutoBackupDate: INITIAL_SETTINGS.lastAutoBackupDate,
-          ...parsed
+          ...parsed,
+          baseSalaryBHYT: (!parsed.baseSalaryBHYT || parsed.baseSalaryBHYT === 2340000) ? INITIAL_SETTINGS.baseSalaryBHYT : parsed.baseSalaryBHYT,
+          povertyStandardBHXH: parsed.povertyStandardBHXH || INITIAL_SETTINGS.povertyStandardBHXH,
+          supportOtherBHXH: (!parsed.supportOtherBHXH || parsed.supportOtherBHXH === 33000) ? INITIAL_SETTINGS.supportOtherBHXH : parsed.supportOtherBHXH,
+          autoBackupWordPress: parsed.autoBackupWordPress !== undefined ? parsed.autoBackupWordPress : INITIAL_SETTINGS.autoBackupWordPress,
+          lastAutoBackupDate: parsed.lastAutoBackupDate || INITIAL_SETTINGS.lastAutoBackupDate,
         };
         if (parsed.agencyName === 'Bảo Hiểm An Bình - Đại Lý Long Web Studio' || parsed.agentPhone === '0987654321') {
           merged.agencyName = INITIAL_SETTINGS.agencyName;
@@ -371,6 +392,16 @@ export default function App() {
           onOpenEditModal={(cust) => setSelectedEditCustomer(cust)}
           onResetDemoData={handleResetDemoData}
           onGoBackLanding={() => setView('landing')}
+          onOpenSEOShare={() => setIsSEOModalOpen(true)}
+        />
+      )}
+
+      {/* SEO & Open Graph Share Modal */}
+      {isSEOModalOpen && (
+        <SEOShareModal
+          agencyName={settings.agencyName}
+          customerCount={customers.length}
+          onClose={() => setIsSEOModalOpen(false)}
         />
       )}
 
