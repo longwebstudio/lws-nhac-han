@@ -55,27 +55,62 @@ export async function runWPGraphQLQuery(query: string, variables: Record<string,
   const url = getStoredWordPressUrl();
   const token = getStoredWPToken();
 
-  const headers: Record<string, string> = {
+  const primaryHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
+    'lws-secret-token': 'LongWebStudio_GraphQL_Secure_Key_2026',
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    primaryHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query, variables }),
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: primaryHeaders,
+      body: JSON.stringify({ query, variables }),
+    });
 
-  const json = await response.json();
+    if (!response.ok) {
+      throw new Error(`Máy chủ WordPress phản hồi lỗi HTTP ${response.status} (${response.statusText}).`);
+    }
 
-  if (json.errors && json.errors.length > 0) {
-    throw new Error(json.errors[0].message);
+    const json = await response.json();
+
+    if (json.errors && json.errors.length > 0) {
+      throw new Error(json.errors[0].message);
+    }
+
+    return json.data;
+  } catch (err: any) {
+    // If custom header 'lws-secret-token' fails CORS preflight or network error occurs, attempt standard fetch
+    if (err.name === 'TypeError' && (err.message === 'Failed to fetch' || err.message?.includes('fetch'))) {
+      try {
+        const fallbackHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          fallbackHeaders['Authorization'] = `Bearer ${token}`;
+        }
+        const fallbackResp = await fetch(url, {
+          method: 'POST',
+          headers: fallbackHeaders,
+          body: JSON.stringify({ query, variables }),
+        });
+        if (!fallbackResp.ok) {
+          throw new Error(`Máy chủ WordPress phản hồi lỗi HTTP ${fallbackResp.status} (${fallbackResp.statusText}).`);
+        }
+        const fallbackJson = await fallbackResp.json();
+        if (fallbackJson.errors && fallbackJson.errors.length > 0) {
+          throw new Error(fallbackJson.errors[0].message);
+        }
+        return fallbackJson.data;
+      } catch (fallbackErr: any) {
+        throw new Error('Không thể kết nối tới máy chủ WordPress (Failed to fetch). Vui lòng kiểm tra lại URL Endpoint WPGraphQL, kết nối mạng hoặc cấu hình CORS.');
+      }
+    }
+    throw err;
   }
-
-  return json.data;
 }
 
 /**
