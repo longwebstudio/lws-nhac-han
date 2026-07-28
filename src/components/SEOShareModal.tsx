@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, ExternalLink, Share2, Globe, ShieldCheck, Sparkles, MessageCircle } from 'lucide-react';
+import { X, Copy, Check, ExternalLink, Share2, Globe, ShieldCheck, Sparkles, MessageCircle, QrCode, Send } from 'lucide-react';
 import { DEFAULT_SEO, updateSEOTags } from '../lib/seo';
 
 interface SEOShareModalProps {
@@ -11,6 +11,7 @@ interface SEOShareModalProps {
 export default function SEOShareModal({ agencyName, customerCount = 0, onClose }: SEOShareModalProps) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPost, setCopiedPost] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const [activeTab, setActiveTab] = useState<'zalo' | 'facebook' | 'google'>('zalo');
 
   const appUrl = 'https://app.longwebstudio.io.vn/';
@@ -46,6 +47,22 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
     setTimeout(() => setCopiedPost(false), 2500);
   };
 
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: ogTitle,
+          text: ogDesc,
+          url: appUrl,
+        });
+      } catch (e) {
+        console.log('Share cancelled or failed', e);
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
   const handleApplyCustomSEO = () => {
     updateSEOTags({
       title: ogTitle,
@@ -55,6 +72,8 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
     });
     alert('Đã cập nhật tự động thẻ SEO Open Graph (OG) lên tiêu đề trang web!');
   };
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(appUrl)}&margin=10`;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
@@ -67,12 +86,12 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                Tối Ưu SEO & Thẻ Open Graph (OG) Tự Động
+                Tối Ưu SEO & Chia Sẻ Ứng Dụng
                 <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/80 px-2 py-0.5 rounded-full font-mono">
                   OG Live
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">Xem trước hiển thị hình ảnh & thông tin khi chia sẻ đường liên kết ứng dụng</p>
+              <p className="text-xs text-slate-400">Xem trước hiển thị hình ảnh & thông tin khi chia sẻ đường liên kết qua Zalo, Facebook, QR Code</p>
             </div>
           </div>
           <button
@@ -85,30 +104,86 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
 
         {/* Modal Body */}
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-          {/* Domain Canonical Banner */}
-          <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between flex-wrap gap-3">
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Đường Dẫn Chuẩn Canonical & Share URL:</span>
-              <p className="text-xs font-mono text-emerald-400 font-bold">{appUrl}</p>
+          {/* Domain Canonical & Direct Quick Action Bar */}
+          <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Đường Dẫn Chuẩn Canonical & Share URL:</span>
+                <p className="text-xs font-mono text-emerald-400 font-bold">{appUrl}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleNativeShare}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Chia sẻ nhanh qua ứng dụng trên điện thoại"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Chia Sẻ Nhanh</span>
+                </button>
+                <button
+                  onClick={handleCopyLink}
+                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-xs font-medium text-slate-200 border border-slate-750 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                  {copiedLink ? 'Đã sao chép!' : 'Sao chép Link'}
+                </button>
+                <button
+                  onClick={() => setShowQR(!showQR)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                    showQR
+                      ? 'bg-amber-950 text-amber-300 border-amber-800'
+                      : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-750'
+                  }`}
+                >
+                  <QrCode className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Mã QR</span>
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleCopyLink}
-                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-xs font-medium text-slate-200 border border-slate-750 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                {copiedLink ? 'Đã sao chép!' : 'Sao chép Link'}
-              </button>
+
+            {/* Quick External Share Buttons */}
+            <div className="pt-2 border-t border-slate-850 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-slate-400 font-medium">Chia sẻ trực tiếp:</span>
               <a
-                href={appUrl}
+                href={`https://zalo.me/share?url=${encodeURIComponent(appUrl)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-xs font-bold text-emerald-300 border border-emerald-800/80 rounded-lg transition-colors flex items-center gap-1.5"
+                className="px-2.5 py-1 bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-800/80 rounded-md text-[11px] font-bold flex items-center gap-1 transition-colors"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Mở Trang
+                <MessageCircle className="w-3 h-3 text-blue-400" /> Zalo Share
+              </a>
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(appUrl)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/80 rounded-md text-[11px] font-bold flex items-center gap-1 transition-colors"
+              >
+                <Globe className="w-3 h-3 text-indigo-400" /> Facebook
               </a>
             </div>
+
+            {/* QR Code Section */}
+            {showQR && (
+              <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 flex items-center gap-4 flex-col sm:flex-row text-center sm:text-left animate-in fade-in duration-200">
+                <div className="p-2 bg-white rounded-xl shadow-md shrink-0">
+                  <img
+                    src={qrCodeUrl}
+                    alt="LWS App QR Code"
+                    className="w-28 h-28 object-contain"
+                  />
+                </div>
+                <div className="space-y-1 text-xs">
+                  <h5 className="font-bold text-white flex items-center gap-1.5 justify-center sm:justify-start">
+                    <QrCode className="w-4 h-4 text-amber-400" />
+                    <span>Quét Mã QR Để Mở Trên Điện Thoại</span>
+                  </h5>
+                  <p className="text-slate-400 leading-relaxed">
+                    Sử dụng camera điện thoại hoặc Zalo Quét Mã để truy cập và lưu ứng dụng trực tiếp trên thiết bị di động của bạn.
+                  </p>
+                  <p className="text-[10px] text-emerald-400 font-mono font-bold pt-1">{appUrl}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tab Selector for Preview Platforms */}

@@ -12,10 +12,12 @@ export interface PaymentHistory {
   amountPaid: number;
   periodMonths: number; // e.g. 3, 6, 12 months
   commissionAmount: number;
+  commissionRate?: number; // Tỉ lệ hoa hồng (%) e.g. 3.1, 4.5
+  category?: 'Tăng mới BHYT' | 'Gia hạn BHYT' | 'Tăng mới BHXH' | 'Gia hạn BHXH' | string; // Phân loại giao dịch
   type?: InsuranceType; // 'BHYT' or 'BHXH'
   note?: string;
   nguoiNop?: string;         // Người nộp
-  trangThaiHoSoName?: string; // Trạng thái hồ sơ
+  trangThaiHoSoName?: string; // Trạng thái hồ sơ (đã ẩn)
 }
 
 export interface Customer {
@@ -23,8 +25,9 @@ export interface Customer {
   name: string;
   phone: string;
   cccd: string;
-  insuranceCode: string; // Mã số BHYT (luôn có)
-  insuranceCodeBHXH?: string; // Mã số BHXH (chỉ có khi tham gia BHXH)
+  insuranceCode: string; // Mã số BHYT (hoặc 10 số BHXH)
+  insuranceCodeBHXH?: string; // Mã số BHXH
+  hasBHYT?: boolean; // Có tham gia BHYT hay không (mặc định true)
   hasBHXH: boolean; // Có tham gia BHXH tự nguyện hay không
   expiryDate: string; // Hạn đóng BHYT (YYYY-MM-DD, luôn có)
   expiryDateBHXH?: string; // Hạn đóng BHXH (YYYY-MM-DD, chỉ có khi hasBHXH = true)
@@ -33,18 +36,40 @@ export interface Customer {
   status: 'active' | 'inactive';
   paymentHistory: PaymentHistory[];
   lastRemindedDate?: string; // YYYY-MM-DD
-  lastRemindedChannel?: 'Zalo' | 'SMS';
+  lastRemindedChannel?: 'Zalo' | 'SMS' | 'Call';
+  hinhThucNhac?: 'Zalo' | 'SMS' | 'Call'; // Tùy chọn nhắc nhở: Zalo, SMS, hoặc Gọi điện thoại
   lastRemindedType?: 'BHYT' | 'BHXH';
   birthday?: string; // Ngày sinh YYYY-MM-DD
   gender?: 'Nam' | 'Nữ'; // Giới tính
   address?: string; // Địa chỉ
 }
 
+export interface BHYTCommissionRules {
+  tangMoi3M: number;  // 3 tháng
+  tangMoi6M: number;  // 6 tháng
+  tangMoi12M: number; // 12 tháng
+  giaHan: number;     // Thường kỳ (gia hạn)
+}
+
+export interface BHXHCommissionRules {
+  tangMoi1M: number;  // 1 tháng
+  tangMoi3M: number;  // 3 tháng
+  tangMoi6M: number;  // 6 tháng
+  tangMoi12M: number; // 12 tháng
+  giaHan: number;     // Thường kỳ (gia hạn)
+}
+
+export interface CommissionMatrix {
+  bhyt: BHYTCommissionRules;
+  bhxh: BHXHCommissionRules;
+}
+
 export interface UserSettings {
   agencyName: string;
   agentPhone: string;
-  bhxhCommissionRate: number; // e.g. 4.5%
-  bhytCommissionRate: number; // e.g. 3.1%
+  bhxhCommissionRate: number; // e.g. 4.9%
+  bhytCommissionRate: number; // e.g. 2.64%
+  commissionMatrix?: CommissionMatrix;
   smsTemplate: string; // SMS BHYT
   zaloTemplate: string; // Zalo BHYT
   smsTemplateBHXH?: string; // SMS BHXH

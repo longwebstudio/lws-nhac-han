@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Customer, InsuranceType } from '../types';
 import { X, FileText, Upload, Copy, AlertCircle, CheckCircle, Database, Download } from 'lucide-react';
+import { getAutoCommissionRate } from '../lib/commission';
 
 interface ImportExcelModalProps {
   onImport: (newCustomers: Customer[]) => void;
@@ -130,25 +131,8 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
             // extract ngayLap as payment date
             const paymentDateVal = item.ngayLap ? String(item.ngayLap).substring(0, 10) : new Date().toISOString().split('T')[0];
             
-            // Bỏ tính ngày hết hạn khi import ghi nhận đóng theo yêu cầu của người dùng
-            const collectionNote = `Người nộp: ${item.nguoiNop || 'N/A'} | Trạng thái HS: ${item.trangThaiHoSoName || 'Chưa xác định'} | Hình thức: ${item.hinhThuc || 'N/A'}`;
-            const amount = Number(item.tongTien) || 0;
-            const commission = isBHYT 
-              ? Math.round(amount * (bhytRate / 100)) 
-              : Math.round(amount * (bhxhRate / 100));
-
-            const paymentHistItem = {
-              id: `pay-json-${item.bienLaiId || index}-${Date.now()}`,
-              bienLaiId: item.bienLaiId ? Number(item.bienLaiId) : undefined,
-              paymentDate: paymentDateVal,
-              amountPaid: amount,
-              periodMonths: isBHYT ? 12 : 1,
-              commissionAmount: commission,
-              type: (isBHYT ? 'BHYT' : 'BHXH') as InsuranceType,
-              note: collectionNote,
-              nguoiNop: item.nguoiNop || undefined,
-              trangThaiHoSoName: item.trangThaiHoSoName || undefined
-            };
+            // Chỉ import thông tin người dân, bỏ ghi nhận lịch sử giao dịch vì không tính chính xác được hoa hồng từ biên nhận lịch sử
+            const collectionNote = item.nguoiNop ? `Người nộp cũ: ${item.nguoiNop}` : '';
 
             // Parse additional fields: gender, address, birthday
             const genderRaw = item.gioiTinh || item.gender || item.gt || '';
@@ -178,9 +162,9 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
               expiryDate: '',
               expiryDateBHXH: undefined,
               createdAt: paymentDateVal,
-              notes: rawAddress ? rawAddress : `Nhập biên nhận từ file JSON. ${collectionNote}`,
+              notes: rawAddress ? rawAddress : (collectionNote || 'Đồng bộ từ file thông tin người dân'),
               status: 'active',
-              paymentHistory: [paymentHistItem],
+              paymentHistory: [], // Bỏ ghi nhận lịch sử đóng tiền từ file import
               birthday: formattedBirthday || undefined,
               gender: finalGender,
               address: rawAddress || undefined
@@ -251,7 +235,7 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
             name,
             phone,
             cccd,
-            insuranceCode: isBHYT ? codeValue : '',
+            insuranceCode: codeValue,
             type: isBHYT ? 'BHYT' : 'BHXH',
             hasBHXH: !isBHYT,
             insuranceCodeBHXH: !isBHYT ? codeValue : undefined,
@@ -428,7 +412,7 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
           gender: finalGender,
           birthday: formattedBirthday || undefined,
           address: rawAddress || undefined,
-          insuranceCode: finalBHYT,
+          insuranceCode: finalBHYT || finalBHXH,
           type: isBHXH ? 'BHXH' : 'BHYT',
           expiryDate: isBHXH ? '' : parsedDate,
           hasBHXH: isBHXH || (finalBHXH && finalBHYT !== finalBHXH ? true : false),

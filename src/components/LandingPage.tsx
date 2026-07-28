@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Shield, Bell, FileSpreadsheet, Search, BarChart3, ChevronRight, Check, Star, ExternalLink, UserCheck, Sparkles, Copy, HelpCircle } from 'lucide-react';
+import { Shield, Bell, FileSpreadsheet, Search, BarChart3, ChevronRight, Check, Star, ExternalLink, UserCheck, Sparkles, Copy, HelpCircle, Building2, Server, PhoneCall } from 'lucide-react';
 import QuickGuideModal from './QuickGuideModal';
 import TermsModal from './TermsModal';
 
@@ -415,56 +415,116 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
         </div>
       </section>
 
-      {/* Pricing packages (Mô hình sử dụng) */}
+      {/* Pricing packages (Bảng giá dịch vụ) */}
       <section id="pricing" className="py-16 bg-slate-900/40 px-4">
         <div className="max-w-7xl mx-auto text-center space-y-12">
           
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 font-mono">DỊCH VỤ LINH HOẠT</span>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">Mô Hình Dịch Vụ & Sử Dụng</h2>
-            <p className="text-slate-400 text-sm max-w-xl mx-auto">Ứng dụng hoàn toàn miễn phí cho nhân viên thu. Gói triển khai riêng dành cho các đơn vị có nhu cầu cài đặt hệ thống độc lập.</p>
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 font-mono">BẢNG GIÁ DỊCH VỤ MINH BẠCH</span>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">Miễn Phí Offline & Phí Tương Đương Zalo Pro Cho Bản Online</h2>
+            <p className="text-slate-400 text-sm max-w-xl mx-auto">Lựa chọn linh hoạt dành cho Nhân viên thu BHXH, BHYT. Sử dụng hoàn toàn miễn phí khi lưu trữ Offline hoặc nâng cấp Online Pro để đồng bộ Cloud dữ liệu.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
             
             {/* Free Plan */}
             <div className="bg-slate-950 rounded-2xl border-2 border-emerald-500/80 p-8 space-y-6 flex flex-col justify-between text-left relative hover:border-emerald-400 transition-all shadow-xl shadow-emerald-950/20">
               <div className="absolute -top-3 left-6 bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3 py-0.5 rounded-full">
-                MIỄN PHÍ DÙNG NGAY
+                MIỄN PHÍ VĨNH VIỄN
               </div>
 
               <div className="space-y-4 pt-1">
-                <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-widest bg-emerald-950/80 border border-emerald-800 px-3 py-1 rounded-full">GÓI SỬ DỤNG MIỄN PHÍ</span>
+                <span className="text-xs font-extrabold text-emerald-400 uppercase tracking-widest bg-emerald-950/80 border border-emerald-800 px-3 py-1 rounded-full">BẢN OFFLINE CÁ NHÂN</span>
                 <div className="text-3xl font-black font-sans text-white">0 VNĐ <span className="text-xs font-normal text-slate-400">/ Mãi mãi</span></div>
-                <p className="text-xs text-slate-300 leading-relaxed">Phần mềm cung cấp miễn phí toàn bộ tính năng hỗ trợ công việc của Nhân viên thu BHXH, BHYT.</p>
+                <p className="text-xs text-slate-300 leading-relaxed">Sử dụng độc lập trên máy tính hoặc điện thoại cá nhân. Lưu trữ dữ liệu an toàn trên bộ nhớ local trình duyệt.</p>
                 <ul className="text-xs text-slate-300 space-y-3 pt-2">
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Quản lý <strong>không giới hạn</strong> người dân & dữ liệu</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Tự động phân nhóm & tạo lời nhắn Zalo/SMS</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Sao chép dán từ Excel, xuất file dự phòng</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Cấu hình biên nhận, hoa hồng & định mức thu</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Đồng bộ sao lưu đám mây an toàn</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Tự động tính <strong>tỷ lệ hoa hồng BHYT & BHXH</strong> chuẩn Hợp đồng</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Quản lý <strong>không giới hạn</strong> người dân & lịch sử đóng</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Xuất & Nhập file Excel dự phòng dữ liệu</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Tạo mẫu tin nhắn Zalo/SMS nhắc nộp tiền</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Tra cứu định mức hỗ trợ BHYT hộ gia đình</li>
                 </ul>
               </div>
               <button
                 onClick={onEnterApp}
                 className="w-full font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl transition-all cursor-pointer text-center shadow-md font-sans"
               >
-                Mở Sổ Sử Dụng Miễn Phí Ngay
+                Mở Sổ Sử Dụng Offline Miễn Phí
               </button>
             </div>
 
-            {/* Custom Deployment Plan */}
-            <div className="bg-slate-950 text-white rounded-2xl border-2 border-slate-800 p-8 space-y-6 flex flex-col justify-between text-left relative overflow-hidden hover:border-slate-700 transition-all">
-              <div className="space-y-4">
-                <span className="text-xs font-extrabold text-blue-400 uppercase tracking-widest bg-blue-950/60 border border-blue-800/80 px-3 py-1 rounded-full">HỆ TRIỂN KHAI RIÊNG</span>
-                <div className="text-3xl font-black font-sans text-white">Liên hệ <span className="text-xs font-normal text-slate-400">/ Có phí triển khai</span></div>
-                <p className="text-xs text-slate-300 leading-relaxed">Dành cho đơn vị, cơ quan hoặc điểm thu lớn cần triển khai hệ thống máy chủ & tên miền riêng.</p>
+            {/* Online Pro Plan */}
+            <div className="bg-slate-950 text-white rounded-2xl border-2 border-emerald-400 p-8 space-y-6 flex flex-col justify-between text-left relative overflow-hidden transition-all shadow-2xl shadow-emerald-950/50">
+              <div className="absolute -top-3 right-6 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3 py-0.5 rounded-full shadow-md">
+                🔥 MỨC PHÍ TƯƠNG ĐƯƠNG ZALO PRO
+              </div>
+
+              <div className="space-y-4 pt-1">
+                <span className="text-xs font-extrabold text-amber-300 uppercase tracking-widest bg-amber-950/80 border border-amber-800/80 px-3 py-1 rounded-full flex items-center gap-1.5 w-fit">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" /> BẢN ONLINE PRO CLOUD
+                </span>
+                
+                {/* Clear Split between Monthly & Yearly */}
+                <div className="space-y-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-800/80">
+                    <span className="text-slate-300 font-medium">Gói Theo Tháng:</span>
+                    <span className="text-white font-extrabold font-mono text-sm">99.000 VNĐ <span className="text-[10px] text-slate-400 font-normal">/tháng</span></span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-0.5">
+                    <div>
+                      <div className="text-emerald-400 font-bold flex items-center gap-1">
+                        <span>Gói Theo Năm:</span>
+                        <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">
+                          🎁 Tặng 1 tháng
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">Đóng 11 tháng, dùng 12 tháng (Tiết kiệm 99k)</div>
+                    </div>
+                    <span className="text-emerald-400 font-extrabold font-mono text-base">1.089.000đ <span className="text-[10px] text-slate-400 font-normal">/năm</span></span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">Dành cho Nhân viên thu cần đồng bộ dữ liệu trên nhiều điện thoại/máy tính & lưu trữ điện toán đám mây an toàn.</p>
                 <ul className="text-xs text-slate-300 space-y-3 pt-2">
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-blue-400 shrink-0" /> Cài đặt hệ thống & cơ sở dữ liệu riêng biệt</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-blue-400 shrink-0" /> Tùy chỉnh giao diện, mẫu in & biểu mẫu theo yêu cầu</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-blue-400 shrink-0" /> Tích hợp tên miền thương hiệu riêng của cơ quan</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-blue-400 shrink-0" /> Đào tạo & bảo trì kỹ thuật tận nơi 24/7</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-blue-400 shrink-0" /> Phát triển bởi Freelancer Long Web Studio</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> <strong>Tất cả tính năng</strong> của Bản Offline Miễn Phí</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> <strong>Đồng bộ Cloud đa thiết bị</strong> (Điện thoại, Laptop, Tablet)</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> <strong>Sao lưu tự động 100%</strong> an toàn tuyệt đối chống mất file</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> <strong>Tạo mẫu tin nhắn nhắc nộp tiền</strong> gửi nhanh qua Zalo / SMS</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> <strong>Thống kê hoa hồng & báo cáo thu phí cá nhân</strong> theo tháng & năm</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-amber-400 shrink-0" /> <strong>Hỗ trợ kỹ thuật 24/7 (1-1 qua Zalo)</strong>: Hướng dẫn cài đặt & khôi phục dữ liệu</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-teal-400 shrink-0" /> <strong>Cập nhật chính sách & tính năng mới</strong> hoàn toàn miễn phí</li>
+                </ul>
+              </div>
+              
+              <button
+                onClick={onEnterApp}
+                className="w-full font-extrabold text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3.5 rounded-xl transition-all cursor-pointer text-center shadow-lg shadow-emerald-950/60 block"
+              >
+                Trải Nghiệm Ngay Bản Online Pro
+              </button>
+            </div>
+
+            {/* Special Custom Private Deployment Plan */}
+            <div className="bg-slate-950 text-white rounded-2xl border-2 border-sky-500/80 p-8 space-y-6 flex flex-col justify-between text-left relative overflow-hidden transition-all shadow-xl shadow-sky-950/30 hover:border-sky-400">
+              <div className="absolute -top-3 right-6 bg-sky-500 text-slate-950 text-[10px] font-black uppercase tracking-widest px-3 py-0.5 rounded-full shadow-md">
+                👑 CƠ QUAN / ĐƠN VỊ THIẾT KẾ RIÊNG
+              </div>
+
+              <div className="space-y-4 pt-1">
+                <span className="text-xs font-extrabold text-sky-300 uppercase tracking-widest bg-sky-950/80 border border-sky-800/80 px-3 py-1 rounded-full flex items-center gap-1.5 w-fit">
+                  <Building2 className="w-3.5 h-3.5 text-sky-400" /> GÓI TRIỂN KHAI HỆ THỐNG RIÊNG
+                </span>
+                
+                <div className="text-3xl font-black font-sans text-sky-400">Thỏa Thuận <span className="text-xs font-normal text-slate-400">/ Theo yêu cầu</span></div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">Dành cho Cơ quan, Đơn vị, Tổ thu hoặc Đại lý lớn cần máy chủ riêng, tên miền thương hiệu độc lập & bảo mật cao.</p>
+                <ul className="text-xs text-slate-300 space-y-3 pt-2">
+                  <li className="flex items-center gap-2"><Server className="w-4 h-4 text-sky-400 shrink-0" /> <strong>Cài đặt Máy chủ & Database Cloud riêng biệt</strong> bảo mật 100%</li>
+                  <li className="flex items-center gap-2"><Building2 className="w-4 h-4 text-sky-400 shrink-0" /> <strong>Tùy chỉnh Tên miền thương hiệu riêng</strong> của đơn vị</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-sky-400 shrink-0" /> <strong>Thiết kế mẫu in biên nhận, biểu mẫu & báo cáo</strong> theo chuẩn đặc thù</li>
+                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-sky-400 shrink-0" /> <strong>Phân quyền đa tài khoản</strong> cho tổ thu & ban quản lý</li>
+                  <li className="flex items-center gap-2"><PhoneCall className="w-4 h-4 text-sky-400 shrink-0" /> <strong>Đào tạo hướng dẫn tận nơi & bảo trì 24/7</strong> bởi Kỹ sư phần mềm</li>
+                  <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-400 shrink-0" /> <strong>Lập trình phát triển tính năng riêng</strong> theo hợp đồng (Long Web Studio)</li>
                 </ul>
               </div>
               
@@ -472,9 +532,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                 href="https://zalo.me/0966570913"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full font-extrabold text-xs bg-slate-900 hover:bg-slate-800 text-blue-400 hover:text-white py-3.5 rounded-xl transition-all cursor-pointer text-center border border-blue-900/60 block"
+                className="w-full font-extrabold text-xs bg-slate-900 hover:bg-slate-800 text-sky-400 hover:text-white py-3.5 rounded-xl transition-all cursor-pointer text-center border border-sky-800/80 block shadow-md"
               >
-                Liên Hệ Báo Giá Triển Khai (Zalo: 0966570913)
+                Liên Hệ Tư Vấn Báo Giá (Zalo: 0966570913)
               </a>
             </div>
 

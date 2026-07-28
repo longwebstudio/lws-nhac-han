@@ -232,10 +232,10 @@ export default function QuickGuideModal({ isOpen, onClose, onEnterApp }: QuickGu
 
               <div className="bg-indigo-950/40 p-4 rounded-xl border border-indigo-800/50 space-y-2">
                 <div className="text-xs font-bold text-indigo-300 flex items-center justify-between">
-                  <span>📱 Gửi Lời Nhắc Zalo / SMS Chuẩn Mực Trong 3 Giây:</span>
+                  <span>📱 Nhắc Hạn Đa Kênh (Zalo / SMS / Gọi Điện) Trong 3 Giây:</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Bấm nút <strong className="text-emerald-400">Nhắc Zalo</strong> hoặc <strong className="text-sky-400">Nhắc SMS</strong> tại dòng của người dân. Hệ thống tự động điền sẵn Họ tên, Mã thẻ, Số tiền cần nộp, Hạn chót và Số tài khoản thu nộp của Đại lý. Cô chú chỉ việc dán sang ứng dụng Zalo/SMS và gửi đi!
+                  Bấm nút <strong className="text-emerald-400">Nhắc Hạn</strong> tại dòng của người dân để chọn gửi <strong className="text-emerald-400">Zalo</strong>, <strong className="text-sky-400">SMS</strong> hoặc <strong className="text-amber-400">Gọi điện</strong>. Hệ thống tự động điền sẵn Họ tên, Mã thẻ, Số tiền cần nộp, Hạn chót và Kịch bản lời thoại gọi điện chuẩn mực cho Đại lý!
                 </p>
               </div>
             </div>

@@ -18,7 +18,7 @@ export const DEFAULT_SEO: SEOProps = {
   description: 'Sổ thu công nghệ chuyên nghiệp dành cho Nhân viên thu BHXH, BHYT. Tự động tính định mức BHYT hộ gia đình (lương cơ sở 2.530.000đ), nhắc đáo hạn Zalo/SMS 3 giây, quản lý danh sách không giới hạn.',
   keywords: 'LWS Sổ thu bảo hiểm, sổ thu bảo hiểm, nhân viên thu bhxh bhyt, phần mềm quản lý BHYT, quản lý BHXH tự nguyện, ứng dụng nhắc hạn bảo hiểm, nhân viên thu BHYT, điểm thu BHXH, BHYT hộ gia đình, nhắc hạn Zalo SMS, tra cứu thẻ BHYT, Long Web Studio',
   ogType: 'website',
-  ogImage: 'https://i0.wp.com/longwebstudio.net/wordpress/wp-content/uploads/2026/06/lws-nhac-han-banner.png?fit=1200%2C630&ssl=1',
+  ogImage: 'https://app.longwebstudio.io.vn/og-image.jpg',
   ogUrl: 'https://app.longwebstudio.io.vn/',
   canonicalUrl: 'https://app.longwebstudio.io.vn/',
 };
@@ -58,7 +58,7 @@ export function updateSEOTags(customSEO: Partial<SEOProps> = {}) {
   setMeta('property', 'og:description', seo.description || DEFAULT_SEO.description!);
   setMeta('property', 'og:image', seo.ogImage || DEFAULT_SEO.ogImage!);
   setMeta('property', 'og:image:secure_url', seo.ogImage || DEFAULT_SEO.ogImage!);
-  setMeta('property', 'og:image:type', 'image/png');
+  setMeta('property', 'og:image:type', 'image/jpeg');
   setMeta('property', 'og:image:width', '1200');
   setMeta('property', 'og:image:height', '630');
   setMeta('property', 'og:image:alt', seo.title || DEFAULT_SEO.title!);

@@ -5,7 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Customer, InsuranceType, PaymentHistory, UserSettings } from '../types';
-import { X, Save, Plus, Trash2, ShieldCheck, DollarSign, Calendar, Eye, FileText, Copy } from 'lucide-react';
+import { X, Save, Plus, Trash2, ShieldCheck, DollarSign, Calendar, Eye, FileText, Copy, Check, Sparkles, RefreshCw } from 'lucide-react';
+import { getAutoCommissionRate } from '../lib/commission';
 
 interface CustomerModalProps {
   customer?: Customer; // If undefined, we are creating a new customer
@@ -22,8 +23,9 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [cccd, setCccd] = useState('');
-  const [insuranceCode, setInsuranceCode] = useState(''); // BHYT
+  const [insuranceCode, setInsuranceCode] = useState(''); // BHYT/BHXH 10 số
   const [expiryDate, setExpiryDate] = useState(''); // BHYT Expiry
+  const [hasBHYT, setHasBHYT] = useState(true); // Có tham gia BHYT hay không
   const [hasBHXH, setHasBHXH] = useState(false); // Có tham gia BHXH hay không
   const [insuranceCodeBHXH, setInsuranceCodeBHXH] = useState(''); // BHXH
   const [expiryDateBHXH, setExpiryDateBHXH] = useState(''); // BHXH Expiry
@@ -43,6 +45,17 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const [periodMonths, setPeriodMonths] = useState('12');
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentNote, setPaymentNote] = useState('');
+  const [paymentCategory, setPaymentCategory] = useState<string>('Gia hạn BHYT');
+  const autoRate = getAutoCommissionRate(type, paymentCategory, Number(periodMonths) || 12, settings.commissionMatrix);
+  const [customCommissionRate, setCustomCommissionRate] = useState<number>(autoRate);
+  const [isRateManuallyEdited, setIsRateManuallyEdited] = useState(false);
+
+  // Automatically recalculate commission rate according to contract table
+  useEffect(() => {
+    if (!isRateManuallyEdited) {
+      setCustomCommissionRate(autoRate);
+    }
+  }, [type, paymentCategory, periodMonths, autoRate, isRateManuallyEdited]);
   const [createParallel, setCreateParallel] = useState(false);
 
   // Quick Vietnamese BHYT & BHXH Premium Estimator states
@@ -116,7 +129,8 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setPhone(customer.phone);
       setCccd(customer.cccd);
       setInsuranceCode(customer.insuranceCode);
-      setExpiryDate(customer.expiryDate);
+      setExpiryDate(customer.expiryDate || new Date().toISOString().split('T')[0]);
+      setHasBHYT(customer.hasBHYT !== false);
       setHasBHXH(!!customer.hasBHXH);
       setInsuranceCodeBHXH(customer.insuranceCodeBHXH || '');
       setExpiryDateBHXH(customer.expiryDateBHXH || '');
@@ -124,8 +138,8 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setAddress(customer.address || '');
       setStatus(customer.status);
       setPaymentHistory(customer.paymentHistory || []);
-      // default the estimator/payment selector type to BHXH if they have it, otherwise BHYT
-      setType(customer.hasBHXH ? 'BHXH' : 'BHYT');
+      // default the estimator/payment selector type to BHXH if they only have BHXH, otherwise BHYT
+      setType(customer.hasBHYT === false && customer.hasBHXH ? 'BHXH' : 'BHYT');
       setBirthday(customer.birthday || '');
       setGender(customer.gender || '');
     } else {
@@ -134,6 +148,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setCccd('');
       setInsuranceCode('');
       setExpiryDate(new Date().toISOString().split('T')[0]);
+      setHasBHYT(true);
       setHasBHXH(false);
       setInsuranceCodeBHXH('');
       setExpiryDateBHXH('');
@@ -157,8 +172,10 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       return;
     }
 
-    // calculate commission
-    const commissionRate = type === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate;
+    // calculate commission using rate stored or edited
+    const commissionRate = typeof customCommissionRate === 'number' && !isNaN(customCommissionRate) 
+      ? customCommissionRate 
+      : (type === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate);
     const commissionAmount = Math.round(amount * (commissionRate / 100));
 
     const newPayment: PaymentHistory = {
@@ -167,8 +184,10 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       amountPaid: amount,
       periodMonths: parseInt(periodMonths) || 12,
       commissionAmount,
+      commissionRate,
+      category: paymentCategory,
       type,
-      note: paymentNote || `Đóng phí chu kỳ ${periodMonths} tháng`
+      note: paymentNote || `${paymentCategory} - Chu kỳ ${periodMonths} tháng`
     };
 
     const updatedHistory = [newPayment, ...paymentHistory];
@@ -204,20 +223,29 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       return;
     }
 
-    if (!insuranceCode.trim() && (!hasBHXH || !insuranceCodeBHXH.trim())) {
-      setModalError('Vui lòng nhập Mã thẻ BHYT hoặc Mã BHXH Tự nguyện');
+    if (!hasBHYT && !hasBHXH) {
+      setModalError('Vui lòng chọn ít nhất 1 loại hình bảo hiểm theo dõi (BHYT Hộ gia đình hoặc BHXH Tự nguyện)');
       return;
     }
+
+    if (!insuranceCode.trim()) {
+      setModalError('Vui lòng nhập Mã số BHXH (hoặc Mã thẻ BHYT) của người dân');
+      return;
+    }
+
+    const cleanCode = insuranceCode.trim().toUpperCase();
+    const extractedBHXHCode = cleanCode.length >= 10 ? cleanCode.slice(-10) : cleanCode;
 
     const savedCustomer: Customer = {
       id: customer?.id || `cust-${Date.now()}`,
       name: name.trim(),
       phone: phone.trim(),
       cccd: cccd.trim(),
-      insuranceCode: insuranceCode.trim(),
-      insuranceCodeBHXH: hasBHXH ? insuranceCodeBHXH.trim() : undefined,
-      hasBHXH: hasBHXH || (!insuranceCode.trim() && !!insuranceCodeBHXH.trim()),
-      expiryDate: expiryDate || new Date().toISOString().split('T')[0],
+      insuranceCode: cleanCode,
+      insuranceCodeBHXH: hasBHXH ? (insuranceCodeBHXH.trim() || extractedBHXHCode) : undefined,
+      hasBHYT: hasBHYT,
+      hasBHXH: hasBHXH,
+      expiryDate: hasBHYT ? (expiryDate || new Date().toISOString().split('T')[0]) : '',
       expiryDateBHXH: hasBHXH ? (expiryDateBHXH || new Date().toISOString().split('T')[0]) : undefined,
       createdAt: customer?.createdAt || new Date().toISOString().split('T')[0],
       notes: notes.trim(),
@@ -267,29 +295,28 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
         className="bg-slate-900 rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-slate-100"
       >
         {/* Title view */}
-        <div className="px-6 py-4 bg-gradient-to-r from-emerald-950 to-teal-900 border-b border-slate-850 text-white flex items-center justify-between">
-          <div className="flex-1 min-w-0 pr-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-semibold font-sans text-white truncate max-w-[280px] sm:max-w-[450px]">
-                {customer ? `Chi Tiết Sổ Thu: ${customer.name}` : 'Thêm Người Dân Mới'}
+        <div className="px-5 py-3 bg-gradient-to-r from-emerald-950 to-teal-900 border-b border-slate-850 text-white flex items-center justify-between">
+          <div className="flex-1 min-w-0 pr-3">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-base sm:text-lg font-bold font-sans text-white leading-tight flex items-center gap-1.5 flex-wrap">
+                <span>{customer ? `Chi Tiết Sổ Thu: ${customer.name}` : 'Thêm Người Dân Mới'}</span>
+                {customer && (
+                  <button
+                    type="button"
+                    onClick={handleCopyQuickDetails}
+                    className={`p-1 rounded-md border transition-all cursor-pointer inline-flex items-center justify-center shrink-0 ${
+                      copied
+                        ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400'
+                        : 'bg-slate-950/40 text-slate-300 border-slate-800 hover:bg-slate-900 hover:text-emerald-400 hover:border-emerald-500/50'
+                    }`}
+                    title={copied ? 'Đã sao chép!' : 'Sao chép nhanh: Họ tên, Mã BHXH, Ngày sinh, Ghi chú'}
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                )}
               </h3>
-              {customer && (
-                <button
-                  type="button"
-                  onClick={handleCopyQuickDetails}
-                  className={`px-3 py-1 text-xs font-bold rounded-lg border flex items-center gap-1 cursor-pointer transition-all ${
-                    copied
-                      ? 'bg-teal-950/80 text-teal-300 border-teal-500/80 scale-95'
-                      : 'bg-slate-950/50 text-white border-slate-800 hover:bg-slate-900 hover:text-emerald-400'
-                  }`}
-                  title="Sao chép nhanh thông tin dưới dạng: Họ tên, Mã BHXH, Ngày sinh, Ghi chú"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  {copied ? 'Đã copy!' : 'Copy nhanh'}
-                </button>
-              )}
             </div>
-            <p className="text-xs text-emerald-400/80 mt-0.5">Sổ ghi chép thông tin thu phí BHXH Việt Nam, BHYT Đại diện</p>
+            <p className="text-[10px] text-emerald-300/80 mt-0.5">Sổ ghi chép thông tin thu phí BHXH, BHYT</p>
           </div>
           <button 
             type="button" 
@@ -370,28 +397,24 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Mã số thẻ BHYT</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-emerald-400 mb-1">
+                  Mã số BHXH / Mã thẻ BHYT *
+                </label>
                 <input
                   type="text"
                   value={insuranceCode}
                   onChange={(e) => setInsuranceCode(e.target.value.toUpperCase())}
-                  placeholder="Ví dụ: GD3910248..."
-                  className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
+                  placeholder="Nhập 10 chữ số Mã BHXH (hoặc 15 ký tự Mã thẻ BHYT)..."
+                  required
+                  className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white font-mono"
                 />
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                  💡 Mỗi người dân có một mã số BHXH duy nhất (gồm 10 chữ số, cũng chính là 10 chữ số cuối cùng trên mã thẻ BHYT 15 ký tự).
+                </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Hạn đóng BHYT</label>
-                <input
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white font-mono"
-                />
-              </div>
-
-              <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Trạng thái theo dõi</label>
                 <select
                   value={status}
@@ -402,21 +425,19 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                   <option className="bg-slate-900" value="inactive">Tạm ngưng (Tắt nhắc lịch)</option>
                 </select>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Địa chỉ thường trú</label>
                 <input
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Xã/Phường, Quận/Huyện, Tỉnh/Thành phố..."
-                  className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
+                  placeholder="Xã/Phường, Quận/Huyện..."
+                  className="w-full text-sm px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
                 />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Ghi chú thêm về hoàn cảnh</label>
                 <input
                   type="text"
@@ -428,52 +449,83 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
               </div>
             </div>
 
-            {/* Combined BHXH togglable section */}
-            <div className={`p-4 rounded-xl border transition-all ${hasBHXH ? 'bg-indigo-950/25 border-indigo-900/60' : 'bg-slate-950/40 border-slate-850'} space-y-3`}>
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-xs text-white uppercase tracking-wider flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={hasBHXH}
-                    onChange={(e) => setHasBHXH(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
-                  />
-                  Đóng cả BHXH Tự Nguyện song hành
-                </label>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${hasBHXH ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' : 'bg-slate-900 text-slate-500'}`}>
-                  {hasBHXH ? 'ĐANG THEO DÕI' : 'TẮT THEO DÕI'}
-                </span>
-              </div>
-              
-              <p className="text-[11px] text-slate-400 leading-normal">
-                Kích hoạt khi người dân này tham gia đóng thêm Bảo hiểm Xã hội tự nguyện. Hạn đóng BHXH có thể khác với BHYT.
-              </p>
+            {/* Selection for Participating Insurance Types (BHYT / BHXH) */}
+            <div className="space-y-3 pt-1">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Loại hình bảo hiểm tham gia theo dõi *
+              </label>
 
-              {hasBHXH && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-indigo-950/65 animate-in fade-in duration-200">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-indigo-300 mb-1">Mã số sổ BHXH *</label>
-                    <input
-                      type="text"
-                      value={insuranceCodeBHXH}
-                      onChange={(e) => setInsuranceCodeBHXH(e.target.value.toUpperCase())}
-                      placeholder="Mã số BHXH..."
-                      required={hasBHXH}
-                      className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-indigo-500 text-white"
-                    />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* BHYT Box */}
+                <div className={`p-3.5 rounded-xl border transition-all ${hasBHYT ? 'bg-emerald-950/20 border-emerald-800/60' : 'bg-slate-950/40 border-slate-850 opacity-60'} space-y-2.5`}>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-white flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={hasBHYT}
+                        onChange={(e) => setHasBHYT(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      Bảo hiểm Y tế (BHYT)
+                    </label>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${hasBHYT ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-900 text-slate-500'}`}>
+                      {hasBHYT ? 'THEO DÕI BHYT' : 'BỎ QUA BHYT'}
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-indigo-300 mb-1">Hạn đóng BHXH *</label>
-                    <input
-                      type="date"
-                      value={expiryDateBHXH || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setExpiryDateBHXH(e.target.value)}
-                      required={hasBHXH}
-                      className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-indigo-500 text-white font-mono"
-                    />
-                  </div>
+
+                  {hasBHYT && (
+                    <div className="pt-2 border-t border-emerald-900/40 animate-in fade-in duration-200">
+                      <label className="block text-[11px] font-semibold text-emerald-300 mb-1">Hạn đóng BHYT *</label>
+                      <input
+                        type="date"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        required={hasBHYT}
+                        className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white font-mono"
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* BHXH Box */}
+                <div className={`p-3.5 rounded-xl border transition-all ${hasBHXH ? 'bg-indigo-950/25 border-indigo-900/60' : 'bg-slate-950/40 border-slate-850 opacity-60'} space-y-2.5`}>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-xs text-white flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={hasBHXH}
+                        onChange={(e) => setHasBHXH(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      Bảo hiểm Xã hội (BHXH) Tự nguyện
+                    </label>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${hasBHXH ? 'bg-indigo-950 text-indigo-300 border border-indigo-800' : 'bg-slate-900 text-slate-500'}`}>
+                      {hasBHXH ? 'THEO DÕI BHXH' : 'BỎ QUA BHXH'}
+                    </span>
+                  </div>
+
+                  {hasBHXH && (
+                    <div className="pt-2 border-t border-indigo-900/40 animate-in fade-in duration-200 space-y-2">
+                      <div className="text-[10px] text-indigo-300 flex items-center justify-between bg-slate-950 px-2 py-1 rounded border border-indigo-950">
+                        <span>Mã BHXH áp dụng:</span>
+                        <span className="font-mono font-bold text-emerald-400">
+                          {insuranceCode.trim().length >= 10 ? insuranceCode.trim().slice(-10) : (insuranceCode.trim() || 'Dùng mã chung ở trên')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-indigo-300 mb-1">Hạn đóng BHXH Tự nguyện *</label>
+                        <input
+                          type="date"
+                          value={expiryDateBHXH || new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setExpiryDateBHXH(e.target.value)}
+                          required={hasBHXH}
+                          className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-indigo-500 text-white font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {modalError && (
@@ -578,7 +630,11 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                     <div className="grid grid-cols-2 gap-2 text-center text-xs font-bold pb-1">
                       <button
                         type="button"
-                        onClick={() => setType('BHYT')}
+                        onClick={() => {
+                          setType('BHYT');
+                          setPaymentCategory('Gia hạn BHYT');
+                          setIsRateManuallyEdited(false);
+                        }}
                         className={`py-1.5 rounded-lg cursor-pointer border text-[11px] transition-colors ${
                           type === 'BHYT'
                             ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500 font-bold'
@@ -589,7 +645,11 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       </button>
                       <button
                         type="button"
-                        onClick={() => setType('BHXH')}
+                        onClick={() => {
+                          setType('BHXH');
+                          setPaymentCategory('Gia hạn BHXH');
+                          setIsRateManuallyEdited(false);
+                        }}
                         className={`py-1.5 rounded-lg cursor-pointer border text-[11px] transition-colors ${
                           type === 'BHXH'
                             ? 'bg-indigo-950/60 text-indigo-400 border-indigo-500 font-bold'
@@ -600,6 +660,76 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       </button>
                     </div>
                   )}
+
+                  {/* Phân loại giao dịch: Tăng mới vs Gia hạn */}
+                  <div className="space-y-1 bg-slate-950/60 p-2.5 rounded-lg border border-slate-850">
+                    <label className="block text-[10px] font-bold text-slate-300">Phân loại nghiệp vụ:</label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {type === 'BHYT' ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentCategory('Gia hạn BHYT');
+                              setIsRateManuallyEdited(false);
+                            }}
+                            className={`py-1 text-[10px] font-bold rounded cursor-pointer border transition-all ${
+                              paymentCategory === 'Gia hạn BHYT'
+                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850'
+                            }`}
+                          >
+                            🔄 Gia hạn BHYT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentCategory('Tăng mới BHYT');
+                              setIsRateManuallyEdited(false);
+                            }}
+                            className={`py-1 text-[10px] font-bold rounded cursor-pointer border transition-all ${
+                              paymentCategory === 'Tăng mới BHYT'
+                                ? 'bg-teal-600 text-white border-teal-500 shadow-xs'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850'
+                            }`}
+                          >
+                            ✨ Tăng mới BHYT
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentCategory('Gia hạn BHXH');
+                              setIsRateManuallyEdited(false);
+                            }}
+                            className={`py-1 text-[10px] font-bold rounded cursor-pointer border transition-all ${
+                              paymentCategory === 'Gia hạn BHXH'
+                                ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850'
+                            }`}
+                          >
+                            🔄 Gia hạn BHXH
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentCategory('Tăng mới BHXH');
+                              setIsRateManuallyEdited(false);
+                            }}
+                            className={`py-1 text-[10px] font-bold rounded cursor-pointer border transition-all ${
+                              paymentCategory === 'Tăng mới BHXH'
+                                ? 'bg-purple-600 text-white border-purple-500 shadow-xs'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-850'
+                            }`}
+                          >
+                            ✨ Tăng mới BHXH
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -628,7 +758,7 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Ngày đại lý thu tiền</label>
+                      <label className="block text-[10px] font-semibold text-slate-400 mb-0.5">Ngày nhân viên thu tiền</label>
                       <input
                         type="date"
                         value={paymentDate}
@@ -638,12 +768,48 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                       />
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 mt-5 leading-normal">
-                        Tự động tính hoa hồng:{' '}
-                        <span className="font-semibold text-emerald-400 font-mono">
-                          {type === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate}%
-                        </span>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="block text-[10px] font-semibold text-slate-400">Tỷ lệ hoa hồng (%)</label>
+                        {isRateManuallyEdited && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsRateManuallyEdited(false);
+                              setCustomCommissionRate(autoRate);
+                            }}
+                            className="text-[9px] text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer font-medium"
+                            title="Áp dụng lại tỷ lệ tự động theo hợp đồng"
+                          >
+                            <RefreshCw size={10} /> Áp lại tự động
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={customCommissionRate}
+                        onChange={(e) => {
+                          setIsRateManuallyEdited(true);
+                          setCustomCommissionRate(parseFloat(e.target.value) || 0);
+                        }}
+                        className="w-full text-xs p-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-emerald-400 font-bold font-mono"
+                      />
+                      <p className="text-[9px] text-slate-400 mt-1 flex items-center gap-1">
+                        <Sparkles size={10} className="text-amber-400 shrink-0" />
+                        <span>Tự động theo HĐ: <strong className="text-emerald-400 font-bold font-mono">{autoRate}%</strong> ({paymentCategory}, {periodMonths}th)</span>
                       </p>
+                    </div>
+
+                    {/* Compact Live Commission Bar */}
+                    <div className="col-span-2 bg-emerald-950/60 border border-emerald-500/40 rounded-lg px-3 py-2 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+                        <DollarSign size={15} className="text-emerald-400 shrink-0" />
+                        <span>Hoa hồng nhận được:</span>
+                      </div>
+                      <div className="text-sm font-black text-emerald-400 font-mono">
+                        +{Math.round((parseFloat(paymentAmount) || 0) * (customCommissionRate / 100)).toLocaleString()}đ
+                        <span className="text-[10px] text-emerald-500 font-normal ml-1.5">({customCommissionRate}%)</span>
+                      </div>
                     </div>
 
                     {/* Interactive Vietnam Premium Rate Estimator */}
@@ -790,85 +956,78 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
               )}
 
               {/* Payments List */}
-              <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
                 {paymentHistory.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 bg-slate-950 border border-slate-850 rounded-xl">
-                    <FileText className="w-8 h-8 mx-auto stroke-1 mb-2 text-slate-600" />
+                  <div className="text-center py-6 text-slate-400 bg-slate-950 border border-slate-850 rounded-xl">
+                    <FileText className="w-6 h-6 mx-auto stroke-1 mb-1.5 text-slate-600" />
                     <p className="text-xs">Chưa có bản ghi thu tiền nào của người này.</p>
                   </div>
                 ) : (
                   paymentHistory.map((pay) => (
-                    <div key={pay.id} className="bg-slate-900 border-l-4 border-emerald-500 rounded-r-xl border border-slate-800 p-3 flex justify-between items-start hover:shadow-xs transition-shadow text-slate-300">
-                      <div>
-                        <div className="flex items-center flex-wrap gap-1.5 animate-fade-in">
-                          <span className="text-[11px] font-extrabold text-white">{(pay.amountPaid).toLocaleString()} VNĐ</span>
-                          <span className="text-[9px] bg-slate-950 border border-slate-850 text-slate-300 px-1 py-0.2 rounded font-semibold font-mono">
-                            {pay.periodMonths}th
+                    <div key={pay.id} className="bg-slate-950/80 border border-slate-850 hover:border-slate-750 rounded-lg p-2 transition-all text-slate-300 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0 flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-slate-500" />
+                            {pay.paymentDate}
                           </span>
-                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold border ${
-                            (pay.type || type) === 'BHXH' 
-                              ? 'bg-indigo-950/60 border-indigo-900/60 text-indigo-300' 
-                              : 'bg-teal-950/60 border-teal-900/60 text-teal-300'
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border shrink-0 ${
+                            pay.category?.includes('Tăng mới')
+                              ? 'bg-amber-950/50 border-amber-800/60 text-amber-300'
+                              : (pay.type || type) === 'BHXH' 
+                              ? 'bg-indigo-950/50 border-indigo-900/60 text-indigo-300' 
+                              : 'bg-teal-950/50 border-teal-900/60 text-teal-300'
                           }`}>
-                            {(pay.type || type) === 'BHXH' ? 'BHXH tự nguyện' : 'BHYT hộ gia đình'}
+                            {pay.category || ((pay.type || type) === 'BHXH' ? 'BHXH' : 'BHYT')} ({pay.periodMonths}th)
+                          </span>
+                          <span className="text-xs font-black text-white font-mono shrink-0">
+                            {(pay.amountPaid).toLocaleString()}đ
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] text-slate-400 mt-1">
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {pay.paymentDate}</span>
-                          <span className="text-emerald-400 font-medium">Hoa hồng: {pay.commissionAmount.toLocaleString()}đ</span>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] font-bold text-emerald-400 font-mono" title={`Tỷ lệ: ${pay.commissionRate ?? (pay.type === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate)}%`}>
+                            +{pay.commissionAmount.toLocaleString()}đ
+                          </span>
+                          {deletePaymentConfirmId === pay.id ? (
+                            <div className="flex items-center gap-1 bg-rose-950/80 border border-rose-800 rounded px-1 py-0.5 animate-fade-in">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleDeletePayment(pay.id);
+                                  setDeletePaymentConfirmId(null);
+                                }}
+                                className="text-[9px] font-bold text-white bg-rose-600 hover:bg-rose-500 px-1.5 py-0.2 rounded cursor-pointer"
+                              >
+                                Xóa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletePaymentConfirmId(null)}
+                                className="text-[9px] font-semibold text-slate-400 hover:text-white px-1 py-0.2 rounded cursor-pointer"
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeletePaymentConfirmId(pay.id)}
+                              className="text-slate-500 hover:text-rose-400 p-0.5 rounded hover:bg-slate-900 transition-colors cursor-pointer"
+                              title="Xóa bản ghi"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
-                        {pay.note && <p className="text-[10px] text-slate-400 mt-1 italic">"{pay.note}"</p>}
-                        {(pay.nguoiNop || pay.trangThaiHoSoName || pay.bienLaiId) && (
-                          <div className="flex flex-wrap items-center gap-2 mt-1 bg-slate-950/40 px-2 py-0.5 border border-slate-800/40 rounded text-[9px] w-fit">
-                            {pay.bienLaiId && (
-                              <span className="text-slate-300">
-                                ID Biên lai: <strong className="text-amber-400 font-mono">{pay.bienLaiId}</strong>
-                              </span>
-                            )}
-                            {pay.bienLaiId && (pay.nguoiNop || pay.trangThaiHoSoName) && <span className="text-slate-650 font-semibold">|</span>}
-                            {pay.nguoiNop && (
-                              <span className="text-slate-300">
-                                Người nộp: <strong className="text-slate-200">{pay.nguoiNop}</strong>
-                              </span>
-                            )}
-                            {pay.nguoiNop && pay.trangThaiHoSoName && <span className="text-slate-650 font-semibold">|</span>}
-                            {pay.trangThaiHoSoName && (
-                              <span className="text-slate-300">
-                                Trạng thái HS: <span className="text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-900/60 px-1 py-0.2 rounded">{pay.trangThaiHoSoName}</span>
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
-                      {deletePaymentConfirmId === pay.id ? (
-                        <div className="flex items-center gap-1 bg-rose-950/60 border border-slate-805 rounded px-1.5 py-0.5 animate-fade-in">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleDeletePayment(pay.id);
-                              setDeletePaymentConfirmId(null);
-                            }}
-                            className="text-[9px] font-bold text-white bg-rose-600 hover:bg-rose-500 px-1.5 py-0.2 rounded cursor-pointer"
-                          >
-                            Xóa
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletePaymentConfirmId(null)}
-                            className="text-[9px] font-semibold text-slate-400 hover:text-white px-1 py-0.2 rounded cursor-pointer"
-                          >
-                            Hủy
-                          </button>
+
+                      {(pay.note || pay.bienLaiId || pay.nguoiNop) && (
+                        <div className="text-[9.5px] text-slate-400 truncate flex items-center gap-2 pt-0.5 border-t border-slate-900">
+                          {pay.bienLaiId && <span className="font-mono text-amber-400 font-semibold">#{pay.bienLaiId}</span>}
+                          {pay.nguoiNop && <span>Nộp: <strong className="text-slate-300 font-normal">{pay.nguoiNop}</strong></span>}
+                          {pay.note && <span className="italic text-slate-400 truncate">"{pay.note}"</span>}
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setDeletePaymentConfirmId(pay.id)}
-                          className="text-slate-500 hover:text-rose-450 p-1 rounded-lg hover:bg-rose-950/30 transition-colors cursor-pointer"
-                          title="Xóa biên lai"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
                       )}
                     </div>
                   ))

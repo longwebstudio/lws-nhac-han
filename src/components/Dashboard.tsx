@@ -9,7 +9,7 @@ import {
   Users, Bell, Calendar, DollarSign, Search, Plus, 
   Settings, Download, Upload, RefreshCw, LogOut, Check, Copy, X,
   Cloud, AlertTriangle, UserCheck, Trash2, TrendingUp, BellRing, Sparkles, HelpCircle,
-  LayoutGrid, List, Share2
+  LayoutGrid, List, Share2, PhoneCall, Phone, HardDrive, Zap, ChevronDown
 } from 'lucide-react';
 import QuickGuideModal from './QuickGuideModal';
 import TermsModal from './TermsModal';
@@ -79,6 +79,7 @@ interface DashboardProps {
   wpUser: { username: string; email: string; name?: string } | null;
   isSyncing: boolean;
   syncStatus: { type: 'success' | 'error'; message: string } | null;
+  currentPlan?: 'offline' | 'online_pro';
   onLogoutWP: () => void;
   onSyncWP: () => void;
   onLoadBackupWP: () => void;
@@ -94,6 +95,7 @@ interface DashboardProps {
   onResetDemoData: () => void;
   onGoBackLanding: () => void;
   onOpenSEOShare?: () => void;
+  onOpenPricing?: () => void;
 }
 
 export default function Dashboard({
@@ -102,6 +104,7 @@ export default function Dashboard({
   wpUser,
   isSyncing,
   syncStatus,
+  currentPlan = 'offline',
   onLogoutWP,
   onSyncWP,
   onLoadBackupWP,
@@ -116,7 +119,8 @@ export default function Dashboard({
   onOpenEditModal,
   onResetDemoData,
   onGoBackLanding,
-  onOpenSEOShare
+  onOpenSEOShare,
+  onOpenPricing
 }: DashboardProps) {
 
   // search, filters & view layout
@@ -129,14 +133,34 @@ export default function Dashboard({
   const [viewLayout, setViewLayout] = useState<'card' | 'table'>('card');
 
   // local notification template generator states
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [activeReminderCust, setActiveReminderCust] = useState<Customer | null>(null);
-  const [activeReminderChannel, setActiveReminderChannel] = useState<'Zalo' | 'SMS'>('Zalo');
+  const [activeReminderChannel, setActiveReminderChannel] = useState<'Zalo' | 'SMS' | 'Call'>('Zalo');
   const [reminderInsType, setReminderInsType] = useState<'BHYT' | 'BHXH'>('BHYT');
   const [showCopiedAlert, setShowCopiedAlert] = useState(false);
   const [copiedCustId, setCopiedCustId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const reminderPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToReminderPanel = () => {
+    setTimeout(() => {
+      const el = reminderPanelRef.current || document.getElementById('lws-reminder-panel');
+      if (el) {
+        const yOffset = -90; // offset for sticky header bar
+        const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  useEffect(() => {
+    if (activeReminderCust) {
+      scrollToReminderPanel();
+    }
+  }, [activeReminderCust?.id]);
 
   const handleCopyCustomerDetails = (cust: Customer, e?: React.MouseEvent) => {
     if (e) {
@@ -212,10 +236,10 @@ export default function Dashboard({
     customers.forEach(cust => {
       // Check if candidate is active and has upcoming BHYT/BHXH expiry within 7 days
       if (cust.status === 'active') {
-        const diffBHYT = getDaysDiff(cust.expiryDate);
+        const diffBHYT = (cust.hasBHYT !== false && cust.expiryDate) ? getDaysDiff(cust.expiryDate) : null;
         const diffBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
         
-        const isBHYTUpcoming = diffBHYT >= 0 && diffBHYT <= 7;
+        const isBHYTUpcoming = diffBHYT !== null && diffBHYT >= 0 && diffBHYT <= 7;
         const isBHXHUpcoming = diffBHXH !== null && diffBHXH >= 0 && diffBHXH <= 7;
         
         if (isBHYTUpcoming || isBHXHUpcoming) {
@@ -223,9 +247,9 @@ export default function Dashboard({
         }
       }
 
-      // 1. Check BHYT (Mandatory)
-      const diffBHYT = getDaysDiff(cust.expiryDate);
-      if (cust.status === 'active') {
+      // 1. Check BHYT (if participating)
+      if (cust.hasBHYT !== false && cust.expiryDate && cust.status === 'active') {
+        const diffBHYT = getDaysDiff(cust.expiryDate);
         if (diffBHYT < 0) {
           expiredCount++;
         } else if (diffBHYT <= 3) {
@@ -235,7 +259,7 @@ export default function Dashboard({
         }
       }
 
-      // 2. Check BHXH (Optional)
+      // 2. Check BHXH (if participating)
       if (cust.hasBHXH && cust.expiryDateBHXH && cust.status === 'active') {
         const diffBHXH = getDaysDiff(cust.expiryDateBHXH);
         if (diffBHXH < 0) {
@@ -386,11 +410,10 @@ export default function Dashboard({
       }
 
       // 2. Insurance type filter
-      // 'All': show everyone (mandatory BHYT)
-      // 'BHYT': show everyone (or those with active status), since everyone has BHYT
-      // 'BHXH': only show those with hasBHXH = true
       let matchesType = true;
-      if (filterType === 'BHXH') {
+      if (filterType === 'BHYT') {
+        matchesType = cust.hasBHYT !== false;
+      } else if (filterType === 'BHXH') {
         matchesType = !!cust.hasBHXH;
       }
 
@@ -398,21 +421,29 @@ export default function Dashboard({
       const matchesStatus = filterStatus === 'All' || cust.status === filterStatus;
 
       // 4. Period Expiry filter
-      // If filtering BHXH specifically, evaluate expiryDateBHXH. Otherwise evaluate general expiryDate (BHYT)
-      const targetExpiryDate = (filterType === 'BHXH' && cust.hasBHXH && cust.expiryDateBHXH) 
-        ? cust.expiryDateBHXH 
-        : cust.expiryDate;
-      const diff = getDaysDiff(targetExpiryDate);
+      let targetExpiryDate = '';
+      if (filterType === 'BHXH' && cust.hasBHXH && cust.expiryDateBHXH) {
+        targetExpiryDate = cust.expiryDateBHXH;
+      } else if (cust.hasBHYT !== false && cust.expiryDate) {
+        targetExpiryDate = cust.expiryDate;
+      } else if (cust.hasBHXH && cust.expiryDateBHXH) {
+        targetExpiryDate = cust.expiryDateBHXH;
+      }
 
       let matchesPeriod = true;
-      if (filterPeriod === 'Expired') {
-        matchesPeriod = diff < 0;
-      } else if (filterPeriod === '3Days') {
-        matchesPeriod = diff >= 0 && diff <= 3;
-      } else if (filterPeriod === '7Days') {
-        matchesPeriod = diff >= 4 && diff <= 7;
-      } else if (filterPeriod === 'Safe') {
-        matchesPeriod = diff > 7;
+      if (targetExpiryDate) {
+        const diff = getDaysDiff(targetExpiryDate);
+        if (filterPeriod === 'Expired') {
+          matchesPeriod = diff < 0;
+        } else if (filterPeriod === '3Days') {
+          matchesPeriod = diff >= 0 && diff <= 3;
+        } else if (filterPeriod === '7Days') {
+          matchesPeriod = diff >= 4 && diff <= 7;
+        } else if (filterPeriod === 'Safe') {
+          matchesPeriod = diff > 7;
+        }
+      } else if (filterPeriod !== 'All') {
+        matchesPeriod = false;
       }
 
       // 5. Reminder status filter
@@ -574,6 +605,45 @@ export default function Dashboard({
       .replace(/\[SDT_DAI_LY\]/g, settings.agentPhone);
   };
 
+  const generateCallScript = (customer: Customer, insType: 'BHYT' | 'BHXH' = 'BHYT') => {
+    const isBHXH = insType === 'BHXH';
+    const typeLabel = isBHXH ? 'Bảo hiểm Xã hội tự nguyện' : 'Bảo hiểm Y tế Hộ gia đình';
+    const expDate = isBHXH ? (customer.expiryDateBHXH || '') : customer.expiryDate;
+    const code = isBHXH ? (customer.insuranceCodeBHXH || customer.insuranceCode) : customer.insuranceCode;
+    const diff = getDaysDiff(expDate);
+    const statusText = diff < 0 ? `đã hết hạn ${Math.abs(diff)} ngày` : `sẽ hết hạn vào ngày ${expDate} (còn ${diff} ngày nữa)`;
+
+    return `KỊCH BẢN GỌI ĐIỆN NHẮC HẠN TÁI TỤC:
+📞 Người nhận: ${customer.name} - SĐT: ${customer.phone}
+
+• Lời chào: "Alo, xin chào ${customer.name} ạ! Em/Cháu là cán bộ đại lý thu BHXH-BHYT ${settings.agencyName} (${settings.agentPhone})."
+• Thông báo: "Em gọi điện thông báo thẻ ${typeLabel} (Mã số: ${code || 'chưa ghi nhận'}) của ${customer.name} ${statusText}."
+• Đề xuất: "Để đảm bảo quyền lợi ${isBHXH ? 'tích lũy số tháng đóng BHXH hưởng lương hưu' : 'khám chữa bệnh BHYT liên tục 100%'}, ${customer.name} vui lòng thu xếp nộp phí gia hạn sớm nhé ạ."
+• Hướng dẫn: "Cháu sẽ gửi thông tin tài khoản thu nộp chính thức qua Zalo/SMS hoặc qua trực tiếp hỗ trợ ${customer.name} ạ!"`;
+  };
+
+  const handleMakeCallReminder = () => {
+    if (activeReminderCust) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const updatedCustomer: Customer = {
+        ...activeReminderCust,
+        lastRemindedDate: todayStr,
+        lastRemindedChannel: 'Call',
+        hinhThucNhac: 'Call',
+        lastRemindedType: reminderInsType
+      };
+      setActiveReminderCust(updatedCustomer);
+      onUpdateCustomer(updatedCustomer);
+
+      const cleanPhone = activeReminderCust.phone.replace(/[^0-9]/g, '');
+      if (cleanPhone) {
+        window.location.href = `tel:${cleanPhone}`;
+      } else {
+        alert('Người dân chưa có số điện thoại hợp lệ để thực hiện cuộc gọi.');
+      }
+    }
+  };
+
   const handleCopyMessage = (text: string) => {
     navigator.clipboard.writeText(text);
     setShowCopiedAlert(true);
@@ -588,6 +658,7 @@ export default function Dashboard({
         ...activeReminderCust,
         lastRemindedDate: todayStr,
         lastRemindedChannel: activeReminderChannel,
+        hinhThucNhac: activeReminderChannel,
         lastRemindedType: reminderInsType
       };
       
@@ -622,8 +693,8 @@ export default function Dashboard({
       </div>
 
       {/* Modern Dashboard Header */}
-      <header className="bg-slate-950/90 backdrop-blur-md border-b border-slate-900 sticky top-0 z-20 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 overflow-hidden">
+      <header className="bg-slate-950/90 backdrop-blur-md border-b border-slate-900 sticky top-0 z-40 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
           
           <div className="flex items-center gap-2 min-w-0 shrink max-w-[160px] sm:max-w-[260px] md:max-w-md">
             <span className="p-1 px-2.5 bg-emerald-600 rounded-lg text-white font-black text-sm shrink-0">LWS</span>
@@ -636,86 +707,183 @@ export default function Dashboard({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Quick Action Button */}
-            {showResetDemoConfirm ? (
-              <div className="flex items-center gap-1 bg-rose-950/60 border border-slate-800 rounded-lg p-1 animate-fade-in text-[10px]">
-                <span className="text-white font-medium px-1 text-[9px] hidden lg:inline">Xóa hết để nạp mẫu?</span>
-                <button
-                  onClick={() => {
-                    onResetDemoData();
-                    setShowResetDemoConfirm(false);
-                  }}
-                  className="bg-rose-600 hover:bg-rose-500 font-extrabold text-[10px] text-white px-2 py-0.5 rounded cursor-pointer transition-colors"
-                >
-                  Có
-                </button>
-                <button
-                  onClick={() => setShowResetDemoConfirm(false)}
-                  className="text-slate-400 hover:text-white px-1.5 py-0.5 rounded cursor-pointer transition-colors"
-                >
-                  Hủy
-                </button>
-              </div>
-            ) : (
+            {/* Main Add Button */}
+            <button
+              onClick={onOpenAddModal}
+              className="px-2.5 sm:px-3 py-2 text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-sm"
+              title="Thêm người dân đóng bảo hiểm mới"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Thêm Người Dân</span>
+            </button>
+
+            {onOpenPricing && (
               <button
-                onClick={() => setShowResetDemoConfirm(true)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-all cursor-pointer hidden md:flex items-center gap-1 text-[11px] font-bold"
-                title="Khôi phục 5 khách hàng mẫu ban đầu"
+                onClick={onOpenPricing}
+                className={`px-2 sm:px-2.5 py-2 rounded-lg border text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                  currentPlan === 'online_pro'
+                    ? 'bg-gradient-to-r from-emerald-950 to-teal-950 text-emerald-300 border-emerald-500/80 hover:border-emerald-400'
+                    : 'bg-slate-900 text-slate-300 border-slate-750 hover:bg-slate-850 hover:text-white'
+                }`}
+                title="Bảng giá dịch vụ: Bản Offline (Miễn phí) & Bản Online Pro (Gói Pro 99k/tháng)"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Khôi phục mẫu
+                {currentPlan === 'online_pro' ? (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0 fill-amber-400" />
+                    <span className="hidden sm:inline">Online Pro</span>
+                    <span className="bg-emerald-500 text-slate-950 text-[9px] font-black px-1 py-0.2 rounded">Pro</span>
+                  </>
+                ) : (
+                  <>
+                    <HardDrive className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="hidden sm:inline">Bản Offline</span>
+                    <span className="bg-slate-800 text-emerald-400 text-[9px] font-extrabold px-1 py-0.2 rounded">0đ</span>
+                  </>
+                )}
               </button>
             )}
 
-            <button
-              onClick={handleExportData}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-all cursor-pointer hidden sm:flex items-center gap-1 text-[11px] font-bold"
-              title="Tải flie JSON dự phòng về máy"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Sao lưu dự phòng
-            </button>
-
-            <button
-              onClick={onOpenImport}
-              className="p-2 sm:px-2.5 text-blue-400 bg-blue-950/40 border border-blue-900/60 hover:bg-blue-900/40 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold"
-              title="Nhập dữ liệu từ Excel"
-            >
-              <Upload className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Nhập từ Excel</span>
-              <span className="sm:hidden">Nhập</span>
-            </button>
-
-            <button
-              onClick={() => setShowQuickGuideModal(true)}
-              className="px-2 sm:px-3 py-2 text-emerald-400 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/80 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-xs"
-              title="Xem hướng dẫn sử dụng nhanh 3 bước"
-            >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Hướng dẫn 3 bước</span>
-              <span className="sm:hidden">Hướng dẫn</span>
-            </button>
-
-            {onOpenSEOShare && (
+            {/* Menu Cài Đặt Dropdown */}
+            <div className="relative">
               <button
-                onClick={onOpenSEOShare}
-                className="px-2 sm:px-3 py-2 text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/80 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-xs"
-                title="Tối ưu SEO & Xem trước thẻ chia sẻ Zalo (Open Graph)"
+                onClick={() => setIsSettingsMenuOpen(!isSettingsMenuOpen)}
+                className={`px-2.5 sm:px-3 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-[11px] font-bold shadow-xs ${
+                  isSettingsMenuOpen
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                    : 'bg-slate-900 text-slate-200 border-slate-750 hover:bg-slate-850 hover:text-white'
+                }`}
+                title="Menu Cài Đặt: Cấu hình, Khôi phục mẫu, Sao lưu, Excel, Hướng dẫn & SEO"
               >
-                <Share2 className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
-                <span className="hidden xl:inline">SEO & Chia Sẻ</span>
-                <span className="xl:hidden">SEO</span>
+                <Settings className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>Menu Cài Đặt</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isSettingsMenuOpen ? 'rotate-180' : ''}`} />
               </button>
-            )}
 
-            <button
-              onClick={onOpenSettings}
-              className="p-2 text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
-              title="Cài đặt tin nhắn và hoa hồng"
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span className="hidden lg:inline">Cài đặt</span>
-            </button>
+              {isSettingsMenuOpen && (
+                <>
+                  {/* Backdrop */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsSettingsMenuOpen(false)} 
+                  />
+
+                  {/* Dropdown Card */}
+                  <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3 py-2 border-b border-slate-800/80 mb-1">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Menu Cài Đặt & Tiện Ích</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Sổ Thu Bảo Hiểm LWS</p>
+                    </div>
+
+                    {/* 1. Cấu hình hệ thống & Hoa hồng */}
+                    <button
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        onOpenSettings();
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                    >
+                      <div className="p-1.5 bg-emerald-950 border border-emerald-800 rounded-lg text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Settings className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="block text-slate-200 group-hover:text-white">Cấu Hình Hệ Thống</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Tỉ lệ hoa hồng, thông tin đại lý & SMS</span>
+                      </div>
+                    </button>
+
+                    {/* 2. Khôi phục mẫu */}
+                    <button
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        if (window.confirm('Bạn có chắc chắn muốn khôi phục 5 khách hàng mẫu ban đầu? Dữ liệu hiện tại sẽ được nạp lại mẫu.')) {
+                          onResetDemoData();
+                        }
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                    >
+                      <div className="p-1.5 bg-rose-950 border border-rose-800 rounded-lg text-rose-400 group-hover:scale-105 transition-transform shrink-0">
+                        <RefreshCw className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="block text-slate-200 group-hover:text-white">Khôi Phục Mẫu</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Nạp 5 khách hàng mẫu ban đầu</span>
+                      </div>
+                    </button>
+
+                    {/* 3. Sao lưu dự phòng */}
+                    <button
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        handleExportData();
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                    >
+                      <div className="p-1.5 bg-teal-950 border border-teal-800 rounded-lg text-teal-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="block text-slate-200 group-hover:text-white">Sao Lưu Dự Phòng</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Tải file JSON sao lưu về máy</span>
+                      </div>
+                    </button>
+
+                    {/* 4. Nhập từ Excel */}
+                    <button
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        onOpenImport();
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                    >
+                      <div className="p-1.5 bg-blue-950 border border-blue-800 rounded-lg text-blue-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="block text-slate-200 group-hover:text-white">Nhập Từ Excel</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Nạp danh sách đóng BHYT/BHXH</span>
+                      </div>
+                    </button>
+
+                    {/* 5. Hướng dẫn 3 bước */}
+                    <button
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        setShowQuickGuideModal(true);
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                    >
+                      <div className="p-1.5 bg-amber-950 border border-amber-800 rounded-lg text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="block text-slate-200 group-hover:text-white">Hướng Dẫn 3 Bước</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Quy trình sử dụng nhanh</span>
+                      </div>
+                    </button>
+
+                    {/* 6. SEO & Chia Sẻ */}
+                    {onOpenSEOShare && (
+                      <button
+                        onClick={() => {
+                          setIsSettingsMenuOpen(false);
+                          onOpenSEOShare();
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                      >
+                        <div className="p-1.5 bg-indigo-950 border border-indigo-800 rounded-lg text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Share2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="block text-slate-200 group-hover:text-white">SEO & Chia Sẻ</span>
+                          <span className="block text-[10px] text-slate-400 font-normal">Xem trước thẻ Open Graph Zalo</span>
+                        </div>
+                      </button>
+                    )}
+
+                  </div>
+                </>
+              )}
+            </div>
 
             <button
               onClick={onGoBackLanding}
@@ -723,7 +891,7 @@ export default function Dashboard({
               title="Về Trang Landing Page"
             >
               <LogOut className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="hidden sm:inline">Về Trang Chủ</span>
+              <span className="hidden sm:inline">Trang Chủ</span>
             </button>
           </div>
 
@@ -1008,6 +1176,7 @@ export default function Dashboard({
                               setActiveReminderCust(cust);
                               setActiveReminderChannel('Zalo');
                               setReminderInsType('BHYT');
+                              scrollToReminderPanel();
                             }}
                             className="text-[10px] font-extrabold px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
                           >
@@ -1021,6 +1190,7 @@ export default function Dashboard({
                               setActiveReminderCust(cust);
                               setActiveReminderChannel('Zalo');
                               setReminderInsType('BHXH');
+                              scrollToReminderPanel();
                             }}
                             className="text-[10px] font-extrabold px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
                           >
@@ -1392,7 +1562,11 @@ export default function Dashboard({
 
         {/* Dynamic reminder generation pane if clicked */}
         {activeReminderCust && (
-          <div className="bg-slate-900 border border-emerald-900/60 rounded-2xl p-4 sm:p-5 relative animate-in slide-in-from-top-3 duration-200 space-y-3 shadow-md">
+          <div 
+            ref={reminderPanelRef}
+            id="lws-reminder-panel"
+            className="bg-slate-900 border border-emerald-900/60 rounded-2xl p-4 sm:p-5 relative animate-in slide-in-from-top-3 duration-200 space-y-3 shadow-md scroll-mt-24"
+          >
             <button
               onClick={() => setActiveReminderCust(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 bg-slate-950 rounded-full shadow-xs border border-slate-800 cursor-pointer"
@@ -1408,7 +1582,7 @@ export default function Dashboard({
                 </h3>
               </div>
 
-              {/* Toggle Zalo / SMS */}
+              {/* Toggle Zalo / SMS / Gọi điện */}
               <div className="flex gap-1 bg-slate-950/80 p-0.5 rounded-lg text-xs font-semibold border border-slate-850">
                 <button
                   type="button"
@@ -1417,16 +1591,25 @@ export default function Dashboard({
                     activeReminderChannel === 'Zalo' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900'
                   }`}
                 >
-                  Gửi Zalo
+                  💬 Gửi Zalo
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveReminderChannel('SMS')}
                   className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${
-                    activeReminderChannel === 'SMS' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    activeReminderChannel === 'SMS' ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900'
                   }`}
                 >
-                  Gửi SMS
+                  ✉️ Gửi SMS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveReminderChannel('Call')}
+                  className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${
+                    activeReminderChannel === 'Call' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  }`}
+                >
+                  📞 Gọi điện
                 </button>
               </div>
             </div>
@@ -1467,7 +1650,9 @@ export default function Dashboard({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-950/90 p-3 rounded-xl border border-slate-800 text-xs text-slate-300">
                 <div className="flex items-center gap-1.5 text-amber-300 font-bold">
                   <Bell className="w-4 h-4 shrink-0 animate-bounce text-amber-400" />
-                  <span>Lần nhắc gần nhất: Ngày {activeReminderCust.lastRemindedDate} qua {activeReminderCust.lastRemindedChannel} (Loại {activeReminderCust.lastRemindedType})</span>
+                  <span>
+                    Lần nhắc gần nhất: Ngày {activeReminderCust.lastRemindedDate} qua {(activeReminderCust.hinhThucNhac || activeReminderCust.lastRemindedChannel) === 'Call' ? 'Gọi điện thoại' : (activeReminderCust.hinhThucNhac || activeReminderCust.lastRemindedChannel)} (Loại {activeReminderCust.lastRemindedType})
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -1477,6 +1662,7 @@ export default function Dashboard({
                     };
                     delete cleared.lastRemindedDate;
                     delete cleared.lastRemindedChannel;
+                    delete cleared.hinhThucNhac;
                     delete cleared.lastRemindedType;
                     setActiveReminderCust(cleared);
                     onUpdateCustomer(cleared);
@@ -1489,59 +1675,112 @@ export default function Dashboard({
             ) : (
               <div className="flex items-center gap-1.5 bg-slate-950/40 p-3 rounded-xl border border-slate-850 text-xs text-slate-500 italic">
                 <Bell className="w-3.5 h-3.5 text-slate-650 shrink-0" />
-                <span>Chính sách này chưa được nhắc đóng phí. Hệ thống sẽ tự động cập nhật là "Đã nhắc" ngay khi bạn bấm sao chép!</span>
+                <span>Chính sách này chưa được nhắc đóng phí. Hệ thống sẽ tự động ghi nhận "Đã nhắc" ngay khi bạn bấm gọi hoặc sao chép!</span>
               </div>
             )}
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase">
-                  Bản nháp tin nhắn {reminderInsType === 'BHXH' ? 'BHXH Tự nguyện' : 'BHYT Hộ gia đình'} điền tự động:
-                </label>
-                <span className="text-[10px] text-emerald-400 font-semibold">
-                  Mẫu: {reminderInsType === 'BHXH' ? 'Nhắc BHXH tự nguyện' : 'Nhắc BHYT'}
-                </span>
-              </div>
-              
-              <div className="relative">
-                <textarea
-                  readOnly
-                  rows={4}
-                  value={generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType)}
-                  className="w-full text-xs font-sans p-3 pb-12 border border-slate-800 rounded-xl bg-slate-950 text-slate-200 leading-relaxed shadow-xs focus:outline-none focus:border-emerald-500"
-                />
-                
-                <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyMessage(generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType))}
-                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md border border-slate-700"
-                    title="Sao chép văn bản vào bộ nhớ tạm"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-slate-300" />
-                    Sao chép
-                  </button>
+            {activeReminderChannel === 'Call' ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                    <PhoneCall className="w-3.5 h-3.5" />
+                    Kịch bản lời thoại gọi điện trực tiếp:
+                  </label>
+                  <span className="text-[10px] text-amber-400 font-semibold">
+                    Kênh: Gọi điện thoại
+                  </span>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const msg = generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType);
-                      handleCopyMessage(msg);
-                      const cleanPhone = activeReminderCust.phone.replace(/[^0-9]/g, '');
-                      if (cleanPhone) {
-                        window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
-                      } else {
-                        alert('Người dân chưa có số điện thoại hợp lệ để mở Zalo Chat.');
-                      }
-                    }}
-                    className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md"
-                    title="Sao chép tin nhắn và mở thẳng hội thoại ZaloChat với số điện thoại này"
-                  >
-                    <span>💬 Mở Chat Zalo</span>
-                  </button>
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    rows={6}
+                    value={generateCallScript(activeReminderCust, reminderInsType)}
+                    className="w-full text-xs font-sans p-3 border border-amber-900/60 rounded-xl bg-slate-950 text-amber-100/90 leading-relaxed shadow-xs focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={handleMakeCallReminder}
+                      className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-white bg-amber-600 hover:bg-amber-500 px-3.5 py-2 rounded-xl transition-transform active:scale-95 cursor-pointer shadow-md w-full sm:w-auto"
+                      title={`Thực hiện cuộc gọi trực tiếp tới ${activeReminderCust.phone}`}
+                    >
+                      <PhoneCall className="w-4 h-4 shrink-0" />
+                      <span>Thực hiện cuộc gọi ({activeReminderCust.phone})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyMessage(generateCallScript(activeReminderCust, reminderInsType))}
+                      className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-transform active:scale-95 cursor-pointer border border-slate-700 shadow-md w-full sm:w-auto"
+                      title="Sao chép kịch bản lời thoại vào bộ nhớ tạm"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                      <span>Sao chép kịch bản</span>
+                    </button>
+                  </div>
+
+                  <span className="text-[10px] text-slate-400 leading-normal">
+                    💡 Bấm "Thực hiện cuộc gọi" để máy tự gọi thoại tới SĐT người dân và tự động cập nhật "Đã nhắc qua Gọi điện".
+                  </span>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase">
+                    Bản nháp tin nhắn {reminderInsType === 'BHXH' ? 'BHXH Tự nguyện' : 'BHYT Hộ gia đình'} điền tự động:
+                  </label>
+                  <span className="text-[10px] text-emerald-400 font-semibold">
+                    Mẫu: {reminderInsType === 'BHXH' ? 'Nhắc BHXH tự nguyện' : 'Nhắc BHYT'}
+                  </span>
+                </div>
+                
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    rows={4}
+                    value={generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType)}
+                    className="w-full text-xs font-sans p-3 pb-14 sm:pb-12 border border-slate-800 rounded-xl bg-slate-950 text-slate-200 leading-relaxed shadow-xs focus:outline-none focus:border-emerald-500"
+                  />
+                  
+                  <div className="absolute bottom-2.5 right-2.5 flex items-center gap-2 max-w-[calc(100%-1.25rem)] flex-wrap justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyMessage(generateMessage(activeReminderCust, activeReminderChannel === 'Zalo', reminderInsType))}
+                      className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md border border-slate-700"
+                      title="Sao chép văn bản vào bộ nhớ tạm"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-300" />
+                      Sao chép
+                    </button>
+
+                    {activeReminderChannel === 'Zalo' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const msg = generateMessage(activeReminderCust, true, reminderInsType);
+                          handleCopyMessage(msg);
+                          const cleanPhone = activeReminderCust.phone.replace(/[^0-9]/g, '');
+                          if (cleanPhone) {
+                            window.open(`https://zalo.me/${cleanPhone}`, '_blank', 'noopener,noreferrer');
+                          } else {
+                            alert('Người dân chưa có số điện thoại hợp lệ để mở Zalo Chat.');
+                          }
+                        }}
+                        className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 rounded-lg transition-transform active:scale-95 cursor-pointer shadow-md"
+                        title="Sao chép tin nhắn và mở thẳng hội thoại ZaloChat với số điện thoại này"
+                      >
+                        <span>💬 Mở Chat Zalo</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {showCopiedAlert && (
               <p className="text-xs text-emerald-400 font-semibold animate-pulse flex items-center gap-1.5 pl-1">
@@ -1587,17 +1826,23 @@ export default function Dashboard({
             {/* Quick Filters Group */}
             <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
               
-              {/* Filter Type BHYT/BHXH */}
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as any)}
-                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500 font-medium"
-                title="Lọc loại hình bảo hiểm để tra cứu & nhắc hạn Zalo"
+              {/* Checkbox Filter: Chỉ tham gia BHXH */}
+              <label 
+                className={`text-xs px-2.5 py-1.5 border rounded-lg flex items-center gap-1.5 cursor-pointer select-none transition-colors font-medium ${
+                  filterType === 'BHXH'
+                    ? 'bg-indigo-950/80 border-indigo-700 text-indigo-300'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+                title="Lọc danh sách chỉ hiển thị những người tham gia BHXH tự nguyện"
               >
-                <option value="All">Loại hình: Tất cả (Mặc định BHYT)</option>
-                <option value="BHYT">Bảo hiểm Y tế (Mặc định BHYT)</option>
-                <option value="BHXH">Chỉ tham gia BHXH tự nguyện (Nhắc BHXH)</option>
-              </select>
+                <input
+                  type="checkbox"
+                  checked={filterType === 'BHXH'}
+                  onChange={(e) => setFilterType(e.target.checked ? 'BHXH' : 'All')}
+                  className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span>Chỉ tham gia BHXH</span>
+              </label>
 
               {/* Filter Expiry window list */}
               <select
@@ -1717,30 +1962,49 @@ export default function Dashboard({
                   >
                     <div className="space-y-3">
                       
-                      {/* Top Row: Gender + Name + Badge */}
+                      {/* Top Row: Gender + Name + Badge & Reminder Method */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
                           {renderGenderIcon(cust.gender)}
-                          <div>
-                            <h4 
-                              onClick={() => onOpenEditModal(cust)}
-                              className="font-extrabold text-white text-sm hover:text-emerald-400 cursor-pointer transition-colors line-clamp-1"
-                              title="Bấm để xem/chỉnh sửa"
-                            >
-                              {cust.name}
-                            </h4>
-                            {cust.birthday && (
-                              <p className="text-[10px] text-slate-400 font-mono">
-                                📅 {cust.birthday.includes('-') ? cust.birthday.split('-').reverse().join('/') : cust.birthday}
-                              </p>
-                            )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 
+                                onClick={() => onOpenEditModal(cust)}
+                                className="font-extrabold text-white text-sm hover:text-emerald-400 cursor-pointer transition-colors line-clamp-1"
+                                title="Bấm để xem/chỉnh sửa"
+                              >
+                                {cust.name}
+                              </h4>
+
+                              {/* Hình thức nhắc hạn ngay tiêu đề thẻ */}
+                              {(cust.hinhThucNhac || cust.lastRemindedChannel) && (
+                                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${
+                                  (cust.hinhThucNhac || cust.lastRemindedChannel) === 'Call' 
+                                    ? 'bg-amber-955/80 text-amber-300 border-amber-800/80' 
+                                    : (cust.hinhThucNhac || cust.lastRemindedChannel) === 'SMS'
+                                    ? 'bg-sky-955/80 text-sky-300 border-sky-800/80'
+                                    : 'bg-emerald-955/80 text-emerald-300 border-emerald-800/80'
+                                }`}>
+                                  {(cust.hinhThucNhac || cust.lastRemindedChannel) === 'Call' ? '📞 Gọi điện thoại' : (cust.hinhThucNhac || cust.lastRemindedChannel) === 'SMS' ? '💬 SMS' : '📱 Zalo'}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-0.5 flex-wrap">
+                              {cust.birthday && (
+                                <span>📅 {cust.birthday.includes('-') ? cust.birthday.split('-').reverse().join('/') : cust.birthday}</span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
                         <div className="shrink-0 flex flex-col items-end gap-1">
                           {badge}
-                          {cust.hasBHXH && (
+                          {cust.hasBHYT !== false && cust.hasBHXH && (
                             <span className="text-[7px] font-black tracking-wider uppercase bg-indigo-950/60 text-indigo-300 border border-indigo-900/50 px-1.5 py-0.2 rounded">BHYT+BHXH</span>
+                          )}
+                          {cust.hasBHYT === false && cust.hasBHXH && (
+                            <span className="text-[7px] font-black tracking-wider uppercase bg-indigo-950/60 text-indigo-300 border border-indigo-900/50 px-1.5 py-0.2 rounded">Chỉ BHXH</span>
                           )}
                         </div>
                       </div>
@@ -1769,19 +2033,21 @@ export default function Dashboard({
 
                         {/* Insurance Cards & Dates */}
                         <div className="space-y-1.5 pt-1.5 border-t border-slate-850/60 text-[11px]">
-                          <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-1 text-slate-300 font-medium">
-                              <span className="text-[8px] font-black bg-emerald-955 text-emerald-300 border border-emerald-900 px-1 py-0.2 rounded select-none">BHYT</span>
-                              <span className="font-mono text-[10px] select-all">{cust.insuranceCode || 'Chưa có mã'}</span>
-                            </span>
-                            <span className="font-mono font-bold text-slate-200">Hạn: {cust.expiryDate}</span>
-                          </div>
+                          {cust.hasBHYT !== false && (
+                            <div className="flex items-center justify-between">
+                              <span className="flex items-center gap-1 text-slate-300 font-medium">
+                                <span className="text-[8px] font-black bg-emerald-955 text-emerald-300 border border-emerald-900 px-1 py-0.2 rounded select-none">BHYT</span>
+                                <span className="font-mono text-[10px] select-all">{cust.insuranceCode || 'Chưa có mã'}</span>
+                              </span>
+                              <span className="font-mono font-bold text-slate-200">Hạn: {cust.expiryDate || '---'}</span>
+                            </div>
+                          )}
 
                           {cust.hasBHXH && (
-                            <div className="flex items-center justify-between pt-1 border-t border-slate-850/40">
+                            <div className={`flex items-center justify-between ${cust.hasBHYT !== false ? 'pt-1 border-t border-slate-850/40' : ''}`}>
                               <span className="flex items-center gap-1 text-indigo-300 font-medium">
                                 <span className="text-[8px] font-black bg-indigo-950 text-indigo-300 border border-indigo-900 px-1 py-0.2 rounded select-none">BHXH</span>
-                                <span className="font-mono text-[10px] select-all">{cust.insuranceCodeBHXH || 'Chưa có mã'}</span>
+                                <span className="font-mono text-[10px] select-all">{cust.insuranceCodeBHXH || (cust.insuranceCode.length >= 10 ? cust.insuranceCode.slice(-10) : cust.insuranceCode) || 'Chưa có mã'}</span>
                               </span>
                               <span className="font-mono font-bold text-indigo-300">Hạn: {cust.expiryDateBHXH || '---'}</span>
                             </div>
@@ -1789,14 +2055,36 @@ export default function Dashboard({
                         </div>
 
                         {/* Recent Payment & Address */}
-                        {(latestBHYTPayment || cust.address || cust.notes) && (
+                        {(latestBHYTPayment || latestBHXHPayment || cust.address || cust.notes) && (
                           <div className="pt-1.5 border-t border-slate-850/40 space-y-1 text-[10px] text-slate-400">
-                            {latestBHYTPayment && (
-                              <div className="flex items-center justify-between text-slate-300 font-mono">
-                                <span>Nộp gần nhất ({latestBHYTPayment.paymentDate}):</span>
-                                <span className="font-bold text-emerald-400">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
-                              </div>
+                            {cust.hasBHYT !== false && (
+                              latestBHYTPayment ? (
+                                <div className="flex items-center justify-between text-slate-300 font-mono">
+                                  <span>Nộp BHYT gần nhất ({latestBHYTPayment.paymentDate}):</span>
+                                  <span className="font-bold text-emerald-400">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between text-slate-500 italic font-mono text-[9.5px]">
+                                  <span>Nộp BHYT:</span>
+                                  <span>Chưa ghi nhận</span>
+                                </div>
+                              )
                             )}
+
+                            {cust.hasBHXH && (
+                              latestBHXHPayment ? (
+                                <div className="flex items-center justify-between text-slate-300 font-mono">
+                                  <span>Nộp BHXH gần nhất ({latestBHXHPayment.paymentDate}):</span>
+                                  <span className="font-bold text-indigo-300">{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between text-slate-500 italic font-mono text-[9.5px]">
+                                  <span>Nộp BHXH:</span>
+                                  <span>Chưa ghi nhận</span>
+                                </div>
+                              )
+                            )}
+
                             {cust.address && (
                               <p className="truncate">📍 {cust.address}</p>
                             )}
@@ -1812,7 +2100,7 @@ export default function Dashboard({
                       <div className="flex items-center justify-between text-[10px]">
                         {cust.lastRemindedDate ? (
                           <span className="text-amber-300 font-semibold bg-amber-955/40 border border-amber-900/40 px-2 py-0.5 rounded-lg">
-                            ✓ Đã nhắc: {cust.lastRemindedDate} ({cust.lastRemindedChannel})
+                            ✓ Đã nhắc: {cust.lastRemindedDate} ({(cust.hinhThucNhac || cust.lastRemindedChannel) === 'Call' ? 'Gọi điện' : (cust.hinhThucNhac || cust.lastRemindedChannel)})
                           </span>
                         ) : (
                           <span className="text-slate-500 italic bg-slate-950/40 px-2 py-0.5 rounded-lg border border-slate-850">
@@ -1847,16 +2135,17 @@ export default function Dashboard({
                           onClick={() => {
                             setActiveReminderCust(cust);
                             const defaultType: 'BHYT' | 'BHXH' = 
-                              (filterType === 'BHXH' && cust.hasBHXH) ? 'BHXH'
+                              (cust.hasBHYT === false && cust.hasBHXH) ? 'BHXH'
+                              : (filterType === 'BHXH' && cust.hasBHXH) ? 'BHXH'
                               : (!cust.insuranceCode && cust.hasBHXH) ? 'BHXH'
                               : 'BHYT';
                             setReminderInsType(defaultType);
-                            window.scrollTo({ top: 120, behavior: 'smooth' });
+                            scrollToReminderPanel();
                           }}
                           className="flex-1 py-1.5 px-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-transform active:scale-95"
-                          title="Soạn tin nhắn Zalo/SMS nhắc hạn tái tục"
+                          title="Soạn tin nhắn Zalo/SMS hoặc gọi điện nhắc hạn tái tục"
                         >
-                          💬 Nhắc Zalo
+                          🔔 Nhắc hạn
                         </button>
                       )}
 
@@ -1981,8 +2270,11 @@ export default function Dashboard({
                                   <Copy className="w-3.5 h-3.5" />
                                 )}
                               </button>
-                              {cust.hasBHXH && (
+                              {cust.hasBHYT !== false && cust.hasBHXH && (
                                 <span className="text-[7px] font-black tracking-wider uppercase bg-indigo-950/50 text-indigo-300 border border-indigo-900/40 px-1.5 py-0.2 rounded select-none">BHYT+BHXH</span>
+                              )}
+                              {cust.hasBHYT === false && cust.hasBHXH && (
+                                <span className="text-[7px] font-black tracking-wider uppercase bg-indigo-950/50 text-indigo-300 border border-indigo-900/40 px-1.5 py-0.2 rounded select-none">Chỉ BHXH</span>
                               )}
                             </div>
 
@@ -2021,22 +2313,24 @@ export default function Dashboard({
                                 </span>
                               )}
 
-                              <span className="text-[10px] font-mono font-medium text-slate-300 bg-emerald-955/30 border border-emerald-900/35 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                <span className="text-[8px] font-black bg-emerald-955 text-emerald-300 border border-emerald-900 px-1 py-0.2 rounded scale-90 select-none">BHYT</span>
-                                <span className="select-all">{cust.insuranceCode || 'Chưa ghi mã'}</span>
-                              </span>
+                              {cust.hasBHYT !== false && (
+                                <span className="text-[10px] font-mono font-medium text-slate-300 bg-emerald-955/30 border border-emerald-900/35 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                  <span className="text-[8px] font-black bg-emerald-955 text-emerald-300 border border-emerald-900 px-1 py-0.2 rounded scale-90 select-none">BHYT</span>
+                                  <span className="select-all">{cust.insuranceCode || 'Chưa ghi mã'}</span>
+                                </span>
+                              )}
 
                               {cust.hasBHXH && (
                                 <span className="text-[10px] font-mono font-medium text-slate-300 bg-indigo-950/30 border border-indigo-900/35 px-1.5 py-0.5 rounded flex items-center gap-1">
                                   <span className="text-[8px] font-black bg-indigo-950 text-indigo-300 border border-indigo-900 px-1 py-0.2 rounded scale-90 select-none">BHXH</span>
-                                  <span className="select-all">{cust.insuranceCodeBHXH || 'Chưa ghi mã'}</span>
+                                  <span className="select-all">{cust.insuranceCodeBHXH || (cust.insuranceCode.length >= 10 ? cust.insuranceCode.slice(-10) : cust.insuranceCode) || 'Chưa ghi mã'}</span>
                                 </span>
                               )}
                             </div>
 
                             {cust.lastRemindedDate ? (
                               <div className="flex items-center gap-1.5 text-[9px] text-amber-300/90 font-extrabold bg-amber-955/40 border border-amber-900/40 rounded px-1.5 py-0.5 w-fit">
-                                <span>Đã nhắc: {cust.lastRemindedDate} ({cust.lastRemindedChannel}) - {cust.lastRemindedType}</span>
+                                <span>Đã nhắc: {cust.lastRemindedDate} ({(cust.hinhThucNhac || cust.lastRemindedChannel) === 'Call' ? 'Gọi điện' : (cust.hinhThucNhac || cust.lastRemindedChannel)}) - {cust.lastRemindedType}</span>
                               </div>
                             ) : (
                               <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold bg-slate-955/40 border border-slate-850/50 rounded px-1.5 py-0.5 w-fit select-none">
@@ -2047,26 +2341,39 @@ export default function Dashboard({
                         </td>
 
                         <td className="px-6 py-4">
-                          <div className="space-y-2 text-xs">
-                            {latestBHYTPayment ? (
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1.5">
+                          <div className="space-y-1.5 text-xs">
+                            {cust.hasBHYT !== false && (
+                              latestBHYTPayment ? (
+                                <div className="flex items-center gap-1.5 font-mono">
                                   <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-emerald-955 text-emerald-300 border border-emerald-900 select-none">BHYT</span>
                                   <span className="font-mono text-emerald-400 font-extrabold">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="text-[10px] text-slate-500 italic">BHYT: Chưa đóng</div>
+                              ) : (
+                                <div className="text-[10px] text-slate-500 italic font-mono">BHYT: Chưa đóng</div>
+                              )
+                            )}
+
+                            {cust.hasBHXH && (
+                              latestBHXHPayment ? (
+                                <div className="flex items-center gap-1.5 font-mono">
+                                  <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-indigo-950 text-indigo-300 border border-indigo-900 select-none">BHXH</span>
+                                  <span className="font-mono text-indigo-300 font-extrabold">{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-slate-500 italic font-mono">BHXH: Chưa đóng</div>
+                              )
                             )}
                           </div>
                         </td>
 
                         <td className="px-6 py-4">
                           <div className="space-y-1 text-[11px]">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-slate-400 text-[10px]">Hạn BHYT:</span>
-                              <span className="font-mono text-slate-300 font-bold">{cust.expiryDate}</span>
-                            </div>
+                            {cust.hasBHYT !== false && (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-slate-400 text-[10px]">Hạn BHYT:</span>
+                                <span className="font-mono text-slate-300 font-bold">{cust.expiryDate || '---'}</span>
+                              </div>
+                            )}
                             {cust.hasBHXH && cust.expiryDateBHXH && (
                               <div className="flex items-center justify-between gap-2 pt-0.5">
                                 <span className="text-indigo-400 text-[10px]">Hạn BHXH:</span>
@@ -2090,15 +2397,17 @@ export default function Dashboard({
                                 onClick={() => {
                                   setActiveReminderCust(cust);
                                   const defaultType: 'BHYT' | 'BHXH' = 
-                                    (filterType === 'BHXH' && cust.hasBHXH) ? 'BHXH'
+                                    (cust.hasBHYT === false && cust.hasBHXH) ? 'BHXH'
+                                    : (filterType === 'BHXH' && cust.hasBHXH) ? 'BHXH'
                                     : (!cust.insuranceCode && cust.hasBHXH) ? 'BHXH'
                                     : 'BHYT';
                                   setReminderInsType(defaultType);
-                                  window.scrollTo({ top: 120, behavior: 'smooth' });
+                                  scrollToReminderPanel();
                                 }}
-                                className="text-[10px] font-black text-amber-300 bg-amber-955/50 border border-amber-900 hover:bg-amber-900/40 px-2 py-1 rounded-lg cursor-pointer"
+                                className="text-[10px] font-black text-amber-300 bg-amber-955/50 border border-amber-900 hover:bg-amber-900/40 px-2 py-1 rounded-lg cursor-pointer flex items-center gap-1"
+                                title="Soạn tin Zalo/SMS hoặc gọi điện nhắc hạn"
                               >
-                                💬 Nhắc Zalo
+                                🔔 Nhắc hạn
                               </button>
                             )}
 

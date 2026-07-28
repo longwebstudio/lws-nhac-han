@@ -4,22 +4,67 @@
  */
 
 import React, { useState } from 'react';
-import { UserSettings } from '../types';
-import { X, Save, AlertCircle, RotateCcw, Globe } from 'lucide-react';
+import { UserSettings, CommissionMatrix } from '../types';
+import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle } from 'lucide-react';
 import { INITIAL_SETTINGS } from '../mockData';
+import { DEFAULT_COMMISSION_MATRIX } from '../lib/commission';
 import { getStoredWordPressUrl, setStoredWordPressUrl, DEFAULT_ENDPOINT } from '../lib/graphql';
 
 interface SettingsModalProps {
   settings: UserSettings;
   onSave: (settings: UserSettings) => void;
   onClose: () => void;
+  onResetDemoData?: () => void;
+  onExportData?: () => void;
+  onOpenImport?: () => void;
+  onOpenQuickGuide?: () => void;
+  onOpenSEOShare?: () => void;
 }
 
-export default function SettingsModal({ settings, onSave, onClose }: SettingsModalProps) {
-  const [formData, setFormData] = useState<UserSettings>({ ...settings });
+export default function SettingsModal({
+  settings,
+  onSave,
+  onClose,
+  onResetDemoData,
+  onExportData,
+  onOpenImport,
+  onOpenQuickGuide,
+  onOpenSEOShare
+}: SettingsModalProps) {
+  const [formData, setFormData] = useState<UserSettings>({
+    ...settings,
+    commissionMatrix: settings.commissionMatrix || DEFAULT_COMMISSION_MATRIX
+  });
   const [wpGraphqlUrl, setWpGraphqlUrl] = useState(getStoredWordPressUrl());
   const [successMsg, setSuccessMsg] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [activeCommissionTab, setActiveCommissionTab] = useState<'bhyt' | 'bhxh'>('bhyt');
+
+  const currentMatrix = formData.commissionMatrix || DEFAULT_COMMISSION_MATRIX;
+
+  const handleMatrixChange = (type: 'bhyt' | 'bhxh', field: string, value: string) => {
+    const num = parseFloat(value) || 0;
+    setFormData(prev => {
+      const baseMatrix = prev.commissionMatrix || DEFAULT_COMMISSION_MATRIX;
+      return {
+        ...prev,
+        commissionMatrix: {
+          ...baseMatrix,
+          [type]: {
+            ...baseMatrix[type],
+            [field]: num
+          }
+        }
+      };
+    });
+  };
+
+  const handleResetMatrix = () => {
+    setFormData(prev => ({
+      ...prev,
+      commissionMatrix: { ...DEFAULT_COMMISSION_MATRIX }
+    }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -79,7 +124,7 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
         <div className="px-6 py-4 bg-gradient-to-r from-emerald-950 to-teal-900 border-b border-slate-850 text-white flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold font-sans text-white">Cấu hình Hệ thống & Tin nhắn nháp</h3>
-            <p className="text-xs text-emerald-400 mt-0.5">Tùy biến thương hiệu đại lý và tỷ lệ hoa học của riêng bạn</p>
+            <p className="text-xs text-emerald-400 mt-0.5">Tùy biến thông tin nhân viên thu và tỷ lệ hoa hồng của riêng bạn</p>
           </div>
           <button 
             type="button" 
@@ -99,19 +144,135 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
             </div>
           )}
 
+          {/* Quick Utilities / Menu Cài Đặt */}
+          <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <h4 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span>Tiện Ích & Thao Tác Nhanh (Menu Cài Đặt)</span>
+              </h4>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800/80">
+                Menu Cài Đặt
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {onResetDemoData && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Bạn có chắc chắn muốn khôi phục 5 khách hàng mẫu ban đầu?')) {
+                      onResetDemoData();
+                      onClose();
+                    }
+                  }}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-rose-300 border border-slate-800 hover:border-rose-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
+                  title="Khôi phục 5 khách hàng mẫu ban đầu"
+                >
+                  <div className="p-1.5 bg-rose-950 text-rose-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <RefreshCcw className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Khôi Phục Mẫu</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Nạp lại 5 người mẫu</span>
+                  </div>
+                </button>
+              )}
+
+              {onExportData && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onExportData();
+                  }}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-emerald-300 border border-slate-800 hover:border-emerald-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
+                  title="Tải file JSON sao lưu dự phòng về máy"
+                >
+                  <div className="p-1.5 bg-emerald-950 text-emerald-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <Download className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Sao Lưu Dự Phòng</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Tải file JSON sao lưu</span>
+                  </div>
+                </button>
+              )}
+
+              {onOpenImport && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenImport();
+                  }}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-blue-300 border border-slate-800 hover:border-blue-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
+                  title="Nhập dữ liệu danh sách người dân từ file Excel"
+                >
+                  <div className="p-1.5 bg-blue-950 text-blue-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <Upload className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Nhập Từ Excel</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Nạp dữ liệu từ file Excel</span>
+                  </div>
+                </button>
+              )}
+
+              {onOpenQuickGuide && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenQuickGuide();
+                  }}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-amber-300 border border-slate-800 hover:border-amber-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
+                  title="Xem hướng dẫn sử dụng nhanh 3 bước"
+                >
+                  <div className="p-1.5 bg-amber-950 text-amber-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <HelpCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Hướng Dẫn 3 Bước</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Quy trình sử dụng</span>
+                  </div>
+                </button>
+              )}
+
+              {onOpenSEOShare && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenSEOShare();
+                  }}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-indigo-300 border border-slate-800 hover:border-indigo-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left col-span-2 sm:col-span-1"
+                  title="Tối ưu SEO & Xem trước thẻ chia sẻ Open Graph"
+                >
+                  <div className="p-1.5 bg-indigo-950 text-indigo-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <Share2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">SEO & Chia Sẻ</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Thẻ chia sẻ Zalo & FB</span>
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Agency Info */}
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-white border-l-4 border-emerald-500 pl-2">Thông Tin Đại Lý Của Bạn</h4>
+            <h4 className="text-sm font-semibold text-white border-l-4 border-emerald-500 pl-2">Thông Tin Nhân Viên Thu Của Bạn</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Tên Đại lý / Điểm thu *</label>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Tên Nhân viên thu / Điểm thu *</label>
                 <input
                   type="text"
                   name="agencyName"
                   value={formData.agencyName}
                   onChange={handleChange}
                   required
-                  placeholder="Ví dụ: Đại lý BHXH Xã An Bình"
+                  placeholder="Ví dụ: Nhân viên thu BHXH, BHYT Lỗ Văn Long"
                   className="w-full text-sm px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-emerald-500 focus:bg-slate-950 transition-all text-white placeholder-slate-600"
                 />
               </div>
@@ -130,43 +291,279 @@ export default function SettingsModal({ settings, onSave, onClose }: SettingsMod
             </div>
           </div>
 
-          {/* Commission Configuration */}
+          {/* Detailed Commission Matrix Table Configuration */}
           <div className="space-y-4 pt-2">
-            <h4 className="text-sm font-bold text-white border-l-4 border-teal-500 pl-2">Tỷ Lệ Hoa Hồng Thu Hộ (%)</h4>
-            <p className="text-xs text-slate-400">Ước tính hoa hồng nhận được dựa trên tổng số tiền người dân đóng.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between border-l-4 border-teal-500 pl-2">
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Tỷ lệ hoa hồng BHYT (%)</label>
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Table className="w-4 h-4 text-teal-400" />
+                  <span>Cấu Hình Bảng Tỷ Lệ Hoa Hồng Thu Hộ (%)</span>
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">Biểu tỷ lệ thù lao tự động theo Hợp đồng Đại lý thu BHXH, BHYT của bạn.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetMatrix}
+                className="text-[11px] font-bold text-teal-400 hover:text-teal-300 bg-slate-950 hover:bg-slate-900 border border-teal-900/80 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                title="Khôi phục về bảng tỷ lệ hợp đồng chuẩn BHXH Việt Nam"
+              >
+                <RefreshCcw className="w-3 h-3" />
+                <span>Khôi phục bảng chuẩn</span>
+              </button>
+            </div>
+
+            {/* Fallback Rates Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-850">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Tỷ lệ hoa hồng BHYT mặc định / dự phòng (%)</label>
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     name="bhytCommissionRate"
                     value={formData.bhytCommissionRate}
                     onChange={handleChange}
                     min="0"
                     max="100"
-                    className="w-full text-sm px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 focus:bg-slate-950 pr-8 transition-all text-white"
+                    className="w-full text-xs px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 text-white font-mono"
                   />
-                  <span className="absolute right-3 top-2.5 text-slate-500 text-sm font-medium">%</span>
+                  <span className="absolute right-3 top-2 text-slate-500 text-xs font-bold">%</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Tỷ lệ hoa hồng BHXH (%)</label>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Tỷ lệ hoa hồng BHXH mặc định / dự phòng (%)</label>
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     name="bhxhCommissionRate"
                     value={formData.bhxhCommissionRate}
                     onChange={handleChange}
                     min="0"
                     max="100"
-                    className="w-full text-sm px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 focus:bg-slate-950 pr-8 transition-all text-white"
+                    className="w-full text-xs px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg focus:outline-none focus:border-teal-500 text-white font-mono"
                   />
-                  <span className="absolute right-3 top-2.5 text-slate-500 text-sm font-medium">%</span>
+                  <span className="absolute right-3 top-2 text-slate-500 text-xs font-bold">%</span>
                 </div>
               </div>
+            </div>
+
+            {/* Matrix Tab Switcher */}
+            <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-850 space-y-3">
+              <div className="flex gap-2 border-b border-slate-800 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveCommissionTab('bhyt')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeCommissionTab === 'bhyt'
+                      ? 'bg-teal-500 text-slate-950 shadow-md'
+                      : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>1. Bảng BHYT Hộ Gia Đình</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCommissionTab('bhxh')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    activeCommissionTab === 'bhxh'
+                      ? 'bg-indigo-500 text-white shadow-md'
+                      : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>2. Bảng BHXH Tự Nguyện</span>
+                </button>
+              </div>
+
+              {/* BHYT Table */}
+              {activeCommissionTab === 'bhyt' && (
+                <div className="space-y-3 animate-in fade-in duration-200">
+                  <div className="text-[11px] text-teal-300/90 font-medium flex items-center gap-1">
+                    <span>💡 Tỷ lệ thù lao BHYT hộ gia đình theo từng chu kỳ đóng và phân loại giao dịch:</span>
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-slate-800">
+                    <table className="w-full text-xs text-left text-slate-300">
+                      <thead className="bg-slate-900 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                        <tr>
+                          <th className="px-3 py-2">Phân Loại Khai Thác</th>
+                          <th className="px-3 py-2">Phương Thức Đóng</th>
+                          <th className="px-3 py-2 text-right">Tỷ Lệ Hoa Hồng (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850 bg-slate-950/60 font-mono">
+                        <tr>
+                          <td className="px-3 py-2 text-emerald-400 font-sans font-semibold">Tăng mới BHYT</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">03 Tháng</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhyt.tangMoi3M}
+                                onChange={(e) => handleMatrixChange('bhyt', 'tangMoi3M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-emerald-400 font-bold focus:border-teal-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-emerald-400 font-sans font-semibold">Tăng mới BHYT</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">06 Tháng</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhyt.tangMoi6M}
+                                onChange={(e) => handleMatrixChange('bhyt', 'tangMoi6M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-emerald-400 font-bold focus:border-teal-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-emerald-400 font-sans font-semibold">Tăng mới BHYT</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">12 Tháng</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhyt.tangMoi12M}
+                                onChange={(e) => handleMatrixChange('bhyt', 'tangMoi12M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-emerald-400 font-bold focus:border-teal-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-teal-300 font-sans font-semibold">Gia hạn / Thường kỳ</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">Tất cả chu kỳ (3, 6, 12 tháng)</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhyt.giaHan}
+                                onChange={(e) => handleMatrixChange('bhyt', 'giaHan', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-teal-300 font-bold focus:border-teal-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* BHXH Table */}
+              {activeCommissionTab === 'bhxh' && (
+                <div className="space-y-3 animate-in fade-in duration-200">
+                  <div className="text-[11px] text-indigo-300/90 font-medium flex items-center gap-1">
+                    <span>💡 Tỷ lệ thù lao BHXH Tự nguyện theo phương thức đóng hàng tháng, 3, 6, 12 tháng:</span>
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-slate-800">
+                    <table className="w-full text-xs text-left text-slate-300">
+                      <thead className="bg-slate-900 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                        <tr>
+                          <th className="px-3 py-2">Phân Loại Khai Thác</th>
+                          <th className="px-3 py-2">Phương Thức Đóng</th>
+                          <th className="px-3 py-2 text-right">Tỷ Lệ Hoa Hồng (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850 bg-slate-950/60 font-mono">
+                        <tr>
+                          <td className="px-3 py-2 text-indigo-400 font-sans font-semibold">Tăng mới BHXH</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">01 Tháng (Hằng tháng)</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhxh.tangMoi1M}
+                                onChange={(e) => handleMatrixChange('bhxh', 'tangMoi1M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-indigo-400 font-bold focus:border-indigo-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-indigo-400 font-sans font-semibold">Tăng mới BHXH</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">03 Tháng</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhxh.tangMoi3M}
+                                onChange={(e) => handleMatrixChange('bhxh', 'tangMoi3M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-indigo-400 font-bold focus:border-indigo-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-indigo-400 font-sans font-semibold">Tăng mới BHXH</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">06 Tháng</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhxh.tangMoi6M}
+                                onChange={(e) => handleMatrixChange('bhxh', 'tangMoi6M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-indigo-400 font-bold focus:border-indigo-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-indigo-400 font-sans font-semibold">Tăng mới BHXH</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">12 Tháng</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhxh.tangMoi12M}
+                                onChange={(e) => handleMatrixChange('bhxh', 'tangMoi12M', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-indigo-400 font-bold focus:border-indigo-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 text-indigo-300 font-sans font-semibold">Gia hạn / Thường kỳ</td>
+                          <td className="px-3 py-2 text-slate-400 font-sans">Tất cả chu kỳ (1, 3, 6, 12 tháng)</td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={currentMatrix.bhxh.giaHan}
+                                onChange={(e) => handleMatrixChange('bhxh', 'giaHan', e.target.value)}
+                                className="w-20 text-xs px-2 py-1 bg-slate-900 border border-slate-800 rounded text-right text-indigo-300 font-bold focus:border-indigo-500"
+                              />
+                              <span className="text-slate-500 text-xs">%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

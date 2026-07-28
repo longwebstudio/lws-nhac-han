@@ -21,12 +21,23 @@ import {
 } from './lib/graphql';
 import { updateSEOTags } from './lib/seo';
 import SEOShareModal from './components/SEOShareModal';
+import PricingModal from './components/PricingModal';
 
 export default function App() {
   // core reactive states
   const [view, setView] = useState<'landing' | 'dashboard'>('landing');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
+
+  // Pricing & Subscription state
+  const [currentPlan, setCurrentPlan] = useState<'offline' | 'online_pro'>(() => {
+    try {
+      const saved = localStorage.getItem('lws_current_plan');
+      return saved === 'online_pro' ? 'online_pro' : 'offline';
+    } catch {
+      return 'offline';
+    }
+  });
 
   // WordPress backend alignment states
   const [wpUser, setWpUser] = useState<WPUser | null>(null);
@@ -40,6 +51,16 @@ export default function App() {
   const [selectedEditCustomer, setSelectedEditCustomer] = useState<Customer | null>(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
+
+  const handleSelectPlan = (plan: 'offline' | 'online_pro') => {
+    setCurrentPlan(plan);
+    try {
+      localStorage.setItem('lws_current_plan', plan);
+    } catch (e) {
+      console.error('Failed to save plan to localStorage:', e);
+    }
+  };
 
   // Dynamic SEO & Open Graph Meta Tags Synchronizer
   useEffect(() => {
@@ -91,7 +112,12 @@ export default function App() {
           autoBackupWordPress: parsed.autoBackupWordPress !== undefined ? parsed.autoBackupWordPress : INITIAL_SETTINGS.autoBackupWordPress,
           lastAutoBackupDate: parsed.lastAutoBackupDate || INITIAL_SETTINGS.lastAutoBackupDate,
         };
-        if (parsed.agencyName === 'Bảo Hiểm An Bình - Đại Lý Long Web Studio' || parsed.agentPhone === '0987654321') {
+        if (
+          parsed.agencyName === 'Bảo Hiểm An Bình - Đại Lý Long Web Studio' ||
+          parsed.agencyName === 'Hồ Thị Thắm - Nhân viên thu BHXH, BHYT bưu điện VHX Tự Lập' ||
+          parsed.agentPhone === '0987654321' ||
+          parsed.agentPhone === '0978333963'
+        ) {
           merged.agencyName = INITIAL_SETTINGS.agencyName;
           merged.agentPhone = INITIAL_SETTINGS.agentPhone;
         }
@@ -393,6 +419,17 @@ export default function App() {
           onResetDemoData={handleResetDemoData}
           onGoBackLanding={() => setView('landing')}
           onOpenSEOShare={() => setIsSEOModalOpen(true)}
+          currentPlan={currentPlan}
+          onOpenPricing={() => setIsPricingOpen(true)}
+        />
+      )}
+
+      {/* Pricing Modal Overlay */}
+      {isPricingOpen && (
+        <PricingModal
+          currentPlan={currentPlan}
+          onSelectPlan={handleSelectPlan}
+          onClose={() => setIsPricingOpen(false)}
         />
       )}
 
@@ -411,6 +448,22 @@ export default function App() {
           settings={settings}
           onSave={handleSaveSettings}
           onClose={() => setIsSettingsOpen(false)}
+          onResetDemoData={handleResetDemoData}
+          onExportData={() => {
+            try {
+              const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(customers, null, 2));
+              const downloadAnchor = document.createElement('a');
+              downloadAnchor.setAttribute("href", dataStr);
+              downloadAnchor.setAttribute("download", `LwsNhacHan_Backup_${new Date().toISOString().split('T')[0]}.json`);
+              document.body.appendChild(downloadAnchor);
+              downloadAnchor.click();
+              downloadAnchor.remove();
+            } catch {
+              alert('Không xuất được file, vui lòng thử lại.');
+            }
+          }}
+          onOpenImport={() => setIsImportOpen(true)}
+          onOpenSEOShare={() => setIsSEOModalOpen(true)}
         />
       )}
 
