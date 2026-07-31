@@ -29,31 +29,31 @@ export default function PricingModal({ currentPlan, onSelectPlan, onClose }: Pri
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
       <div 
         id="pricing-modal-card"
-        className="bg-slate-900 rounded-2xl max-w-6xl w-full shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-slate-100"
+        className="bg-slate-900 rounded-2xl max-w-6xl w-full shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200 text-slate-100 my-auto"
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 border-b border-slate-850 text-white flex items-center justify-between">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 border-b border-slate-850 text-white flex items-center justify-between shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-amber-400" />
-              <h3 className="text-lg font-bold font-sans text-white">Bảng Giá Dịch Vụ Sổ Thu Bảo Hiểm</h3>
+              <h3 className="text-base sm:text-lg font-bold font-sans text-white">Bảng Giá Dịch Vụ Sổ Thu Bảo Hiểm</h3>
             </div>
             <p className="text-xs text-emerald-300/80 mt-0.5">Miễn phí vĩnh viễn khi dùng Offline - Mức phí Online Pro ưu đãi tương đương Zalo Pro</p>
           </div>
           <button 
             type="button" 
             onClick={onClose} 
-            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 min-h-0">
           {showPaymentQR ? (
             /* Payment QR step for Online Pro */
             <div className="max-w-md mx-auto bg-slate-950 border border-emerald-500/50 rounded-2xl p-6 text-center space-y-4 shadow-xl">

@@ -25,13 +25,13 @@ export default function PWAInstallModal({ isOpen, onClose }: PWAInstallModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-emerald-500/40 rounded-2xl shadow-2xl overflow-hidden text-slate-100 my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-slate-900 border border-emerald-500/40 rounded-2xl shadow-2xl overflow-hidden text-slate-100 my-auto flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 p-5 border-b border-emerald-500/30 flex items-start justify-between">
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 p-4 sm:p-5 border-b border-emerald-500/30 flex items-start justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+            <div className="p-2.5 sm:p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 shrink-0">
               <Download className="w-6 h-6 animate-pulse" />
             </div>
             <div>
@@ -39,21 +39,21 @@ export default function PWAInstallModal({ isOpen, onClose }: PWAInstallModalProp
                 <WifiOff className="w-3 h-3 text-emerald-400" />
                 Hỗ Trợ Offline 100%
               </div>
-              <h3 className="text-lg font-bold text-white">
+              <h3 className="text-base sm:text-lg font-bold text-white">
                 Cài Đặt Ứng Dụng LWS Sổ Thu
               </h3>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto min-h-0">
           <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs sm:text-sm text-slate-200 leading-relaxed space-y-1.5">
             <p className="font-semibold text-emerald-300 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -141,7 +141,7 @@ export default function PWAInstallModal({ isOpen, onClose }: PWAInstallModalProp
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
           <span className="text-[11px] text-slate-400 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             Phát triển bởi Freelancer Long Web Studio

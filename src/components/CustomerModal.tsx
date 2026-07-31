@@ -36,8 +36,6 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   const [birthday, setBirthday] = useState('');
   const [gender, setGender] = useState<'Nam' | 'Nữ' | ''>('');
-  const [nhanVienThuName, setNhanVienThuName] = useState('');
-  const [nhanVienThuPhone, setNhanVienThuPhone] = useState('');
 
   const [copied, setCopied] = useState(false);
 
@@ -144,8 +142,6 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setType(customer.hasBHYT === false && customer.hasBHXH ? 'BHXH' : 'BHYT');
       setBirthday(customer.birthday || '');
       setGender(customer.gender || '');
-      setNhanVienThuName(customer.nhanVienThuName || settings.agencyName || '');
-      setNhanVienThuPhone(customer.nhanVienThuPhone || settings.agentPhone || '');
     } else {
       setName('');
       setPhone('');
@@ -163,8 +159,6 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       setType('BHYT');
       setBirthday('');
       setGender('');
-      setNhanVienThuName(settings.agencyName || '');
-      setNhanVienThuPhone(settings.agentPhone || '');
     }
     setPaymentDate(new Date().toISOString().split('T')[0]);
     setBhxhIncomeChoice(settings.povertyStandardBHXH || 1500000);
@@ -242,6 +236,16 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
     const cleanCode = insuranceCode.trim().toUpperCase();
     const extractedBHXHCode = cleanCode.length >= 10 ? cleanCode.slice(-10) : cleanCode;
 
+    // Check if customer is being renewed (expiry dates changed or payment added)
+    const isExpiryChanged = customer?.id ? (
+      (expiryDate !== (customer.expiryDate || '')) ||
+      (expiryDateBHXH !== (customer.expiryDateBHXH || ''))
+    ) : false;
+    const isPaymentAdded = customer?.id ? (
+      paymentHistory.length > (customer.paymentHistory?.length || 0)
+    ) : false;
+    const isRenewed = isExpiryChanged || isPaymentAdded;
+
     const savedCustomer: Customer = {
       id: customer?.id || `cust-${Date.now()}`,
       name: name.trim(),
@@ -260,8 +264,12 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
       birthday: birthday.trim() || undefined,
       gender: gender as 'Nam' | 'Nữ' || undefined,
       address: address.trim() || undefined,
-      nhanVienThuName: nhanVienThuName.trim() || undefined,
-      nhanVienThuPhone: nhanVienThuPhone.trim() || undefined
+      ...(isRenewed ? {} : {
+        lastRemindedDate: customer?.lastRemindedDate,
+        lastRemindedChannel: customer?.lastRemindedChannel,
+        hinhThucNhac: customer?.hinhThucNhac,
+        lastRemindedType: customer?.lastRemindedType
+      })
     };
 
     onSave(savedCustomer);
@@ -454,36 +462,6 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                   placeholder="Hạn đóng 5 năm liên tục, ghi chú liên hệ khác..."
                   className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
                 />
-              </div>
-
-              {/* Thông tin Nhân Viên Thu phụ trách người dân */}
-              <div className="md:col-span-2 pt-2 border-t border-slate-850">
-                <div className="flex items-center gap-2 mb-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs font-bold text-emerald-300">Thông Tin Nhân Viên Thu Phụ Trách</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-850">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Họ tên Nhân viên thu</label>
-                    <input
-                      type="text"
-                      value={nhanVienThuName}
-                      onChange={(e) => setNhanVienThuName(e.target.value)}
-                      placeholder={settings.agencyName || 'Nhập tên nhân viên thu...'}
-                      className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Số điện thoại Nhân viên thu</label>
-                    <input
-                      type="text"
-                      value={nhanVienThuPhone}
-                      onChange={(e) => setNhanVienThuPhone(e.target.value)}
-                      placeholder={settings.agentPhone || 'Nhập SĐT nhân viên thu...'}
-                      className="w-full text-xs px-3 py-2 border border-slate-800 bg-slate-950 rounded-lg focus:outline-none focus:border-emerald-500 text-white font-mono"
-                    />
-                  </div>
-                </div>
               </div>
             </div>
 

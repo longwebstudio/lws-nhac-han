@@ -26,7 +26,7 @@ export default function SEOShareModal({ agencyName, customerCount = 0, onClose }
         'sổ thu BHXH online',
         'Freelancer Long Web Studio',
         'Long Web Studio',
-        'app.longwebstudio.io.vn',
+        'sothu.longwebstudio.io.vn',
         'LWS Nhắc Hạn Bảo Hiểm Online'
       ]
     },
@@ -74,7 +74,7 @@ export default function SEOShareModal({ agencyName, customerCount = 0, onClose }
     setTimeout(() => setCopiedKeyword(null), 2000);
   };
 
-  const appUrl = 'https://app.longwebstudio.io.vn/';
+  const appUrl = 'https://sothu.longwebstudio.io.vn/';
   const displayAgency = agencyName || 'Đại Lý Thu BHXH, BHYT';
 
   const ogTitle = `LWS Sổ Thu Bảo Hiểm Online - Ứng Dụng Miễn Phí Nhắc Hạn BHYT & BHXH (${displayAgency})`;
@@ -136,16 +136,16 @@ Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(appUrl)}&margin=10`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl my-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fade-in">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl my-auto flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="p-5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-4 sm:p-5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-950/80 border border-emerald-800/80 rounded-xl text-emerald-400">
+            <div className="p-2.5 bg-emerald-950/80 border border-emerald-800/80 rounded-xl text-emerald-400 shrink-0">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 Tối Ưu SEO & Chia Sẻ Ứng Dụng
                 <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/80 px-2 py-0.5 rounded-full font-mono">
                   OG Live
@@ -156,14 +156,14 @@ Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-850 transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-850 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 flex-1 overflow-y-auto min-h-0">
           {/* Domain Canonical & Direct Quick Action Bar */}
           <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -307,13 +307,13 @@ Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute bottom-2 left-2 bg-slate-950/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-emerald-400 font-mono border border-slate-800">
-                      app.longwebstudio.io.vn
+                      sothu.longwebstudio.io.vn
                     </div>
                   </div>
                   <div className="p-3.5 space-y-1">
                     <h4 className="text-sm font-bold text-white leading-snug line-clamp-2">{ogTitle}</h4>
                     <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{ogDesc}</p>
-                    <span className="text-[10px] text-blue-400 font-medium block pt-1">app.longwebstudio.io.vn</span>
+                    <span className="text-[10px] text-blue-400 font-medium block pt-1">sothu.longwebstudio.io.vn</span>
                   </div>
                 </div>
               </div>
@@ -338,7 +338,7 @@ Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
                     />
                   </div>
                   <div className="p-3.5 space-y-1.5 bg-slate-900 border-t border-slate-800">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">APP.LONGWEBSTUDIO.IO.VN</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">SOTHU.LONGWEBSTUDIO.IO.VN</span>
                     <h4 className="text-sm font-bold text-white line-clamp-2">{ogTitle}</h4>
                     <p className="text-xs text-slate-400 line-clamp-2">{ogDesc}</p>
                   </div>
@@ -359,7 +359,7 @@ Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
                   <div className="flex items-center gap-2 text-xs text-slate-300">
                     <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">L</span>
                     <span className="font-medium text-slate-200">LWS Sổ Thu Bảo Hiểm</span>
-                    <span className="text-slate-500">https://app.longwebstudio.io.vn</span>
+                    <span className="text-slate-500">https://sothu.longwebstudio.io.vn</span>
                   </div>
                   <h4 className="text-base font-medium text-blue-400 hover:underline cursor-pointer pt-1">{ogTitle}</h4>
                   <p className="text-xs text-slate-300 leading-relaxed pt-0.5">{ogDesc}</p>
@@ -488,7 +488,7 @@ Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-xs">
+        <div className="p-3.5 sm:p-4 bg-slate-950 border-t border-slate-800 flex justify-between items-center text-xs shrink-0">
           <span className="text-slate-500 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Tự động tối ưu SEO cho Zalo, Facebook & Google
           </span>

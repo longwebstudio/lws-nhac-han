@@ -18,9 +18,9 @@ export const DEFAULT_SEO: SEOProps = {
   description: 'Ứng dụng Sổ Thu Bảo Hiểm Online miễn phí phát triển bởi Freelancer Long Web Studio giúp Nhân viên thu BHXH, BHYT quản lý danh sách người dân, tự động tính giảm trừ hộ gia đình và gửi tin nhắn Zalo/SMS nhắc hạn đóng 3 giây.',
   keywords: 'sổ thu bảo hiểm online, LWS sổ thu bảo hiểm online, phần mềm sổ thu bảo hiểm online, ứng dụng nhắc hạn bảo hiểm online, nhân viên thu bhxh bhyt, Freelancer Long Web Studio, nhắc hạn BHYT online, nhắc hạn BHXH tự nguyện online, quản lý người dân đóng BHYT, nhắc hạn Zalo 3s, BHYT hộ gia đình, tra cứu thẻ BHYT',
   ogType: 'website',
-  ogImage: 'https://app.longwebstudio.io.vn/og-image.jpg',
-  ogUrl: 'https://app.longwebstudio.io.vn/',
-  canonicalUrl: 'https://app.longwebstudio.io.vn/',
+  ogImage: 'https://sothu.longwebstudio.io.vn/og-image.jpg',
+  ogUrl: 'https://sothu.longwebstudio.io.vn/',
+  canonicalUrl: 'https://sothu.longwebstudio.io.vn/',
 };
 
 /**
@@ -66,7 +66,7 @@ export function updateSEOTags(customSEO: Partial<SEOProps> = {}) {
 
   // Twitter
   setMeta('name', 'twitter:card', 'summary_large_image');
-  setMeta('name', 'twitter:domain', 'app.longwebstudio.io.vn');
+  setMeta('name', 'twitter:domain', 'sothu.longwebstudio.io.vn');
   setMeta('name', 'twitter:url', seo.ogUrl || DEFAULT_SEO.ogUrl!);
   setMeta('name', 'twitter:title', seo.title || DEFAULT_SEO.title!);
   setMeta('name', 'twitter:description', seo.description || DEFAULT_SEO.description!);

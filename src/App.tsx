@@ -24,6 +24,33 @@ import { updateSEOTags } from './lib/seo';
 import SEOShareModal from './components/SEOShareModal';
 import PricingModal from './components/PricingModal';
 
+import { getAutoCommissionRate } from './lib/commission';
+
+const normalizeDateParam = (val: string | null): string => {
+  if (!val) return '';
+  const trimmed = val.trim();
+  if (!trimmed) return '';
+  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return trimmed;
+};
+
+const normalizeGenderParam = (val: string | null): 'Nam' | 'Nữ' | undefined => {
+  if (!val) return undefined;
+  const lower = val.trim().toLowerCase();
+  if (['nam', 'male', 'm', '1'].includes(lower)) return 'Nam';
+  if (['nữ', 'nu', 'female', 'f', '0'].includes(lower)) return 'Nữ';
+  return undefined;
+};
+
 export default function App() {
   // core reactive states
   const [view, setView] = useState<'landing' | 'dashboard'>('landing');
@@ -73,16 +100,16 @@ export default function App() {
       updateSEOTags({
         title: 'LWS Sổ Thu Bảo Hiểm Online - Ứng Dụng Miễn Phí Nhắc Hạn BHYT & BHXH | Long Web Studio',
         description: 'Sổ thu bảo hiểm online tiện lợi dành cho Nhân viên thu BHXH, BHYT. Tự động tính định mức BHYT hộ gia đình (lương cơ sở 2.530.000đ), gửi tin nhắn Zalo/SMS nhắc đáo hạn 3 giây.',
-        ogUrl: 'https://app.longwebstudio.io.vn/',
-        canonicalUrl: 'https://app.longwebstudio.io.vn/',
+        ogUrl: 'https://sothu.longwebstudio.io.vn/',
+        canonicalUrl: 'https://sothu.longwebstudio.io.vn/',
       });
     } else {
       const agency = settings.agencyName || 'Đại Lý Thu BHXH, BHYT';
       updateSEOTags({
         title: `LWS Sổ Thu Bảo Hiểm Online - ${agency}`,
         description: `Sổ thu bảo hiểm online quản lý ${customers.length} người dân đóng BHYT Hộ gia đình và BHXH Tự nguyện tại ${agency}. Tự động tạo tin nhắn Zalo nhắc hạn, tính định mức hỗ trợ chính xác.`,
-        ogUrl: 'https://app.longwebstudio.io.vn/#dashboard',
-        canonicalUrl: 'https://app.longwebstudio.io.vn/',
+        ogUrl: 'https://sothu.longwebstudio.io.vn/#dashboard',
+        canonicalUrl: 'https://sothu.longwebstudio.io.vn/',
       });
     }
   }, [view, settings.agencyName, customers.length]);
@@ -96,28 +123,38 @@ export default function App() {
       const backup = await getBackupFromWordPress();
       if (backup && backup.updatedAt) {
         const cloudDateStr = backup.updatedAt.includes(' ') ? backup.updatedAt.replace(' ', 'T') : backup.updatedAt;
-        const cloudTs = new Date(cloudDateStr).getTime();
+        const cloudTs = new Date(cloudDateStr).getTime() || 0;
 
         const localSyncedStr = settings.lastSyncedVersion;
         let localSyncedTs = 0;
         if (localSyncedStr) {
           const localDateStr = localSyncedStr.includes(' ') ? localSyncedStr.replace(' ', 'T') : localSyncedStr;
-          localSyncedTs = new Date(localDateStr).getTime();
+          localSyncedTs = new Date(localDateStr).getTime() || 0;
         }
 
-        // Compare timestamps
+        // Determine if Cloud version is newer or has different record count
         const isCloudNewer = (cloudTs > localSyncedTs + 3000) || (!localSyncedStr && (backup.customers?.length || 0) > 0);
 
         if (isCloudNewer) {
+          // ONLY open modal if cloud has a newer / different version
           setCloudBackupNotice(backup as CloudBackupInfo);
           setIsVersionModalOpen(true);
+          if (isManualCheck) {
+            setSyncStatus({
+              type: 'success',
+              message: `Phát hiện phiên bản Sổ Thu mới trên Cloud (${backup.updatedAt})! Cửa sổ khôi phục đã hiển thị.`
+            });
+          }
         } else {
+          // Cloud version is same or older: DO NOT show modal
+          setIsVersionModalOpen(false);
           setSyncStatus({
             type: 'success',
-            message: `Dữ liệu Sổ Thu hiện tại trên thiết bị đã khớp với phiên bản mới nhất trên Cloud (${backup.updatedAt}).`
+            message: `Dữ liệu Sổ Thu hiện tại trên thiết bị đã khớp hoàn toàn với phiên bản mới nhất trên Cloud (${backup.updatedAt}).`
           });
         }
       } else if (isManualCheck) {
+        setIsVersionModalOpen(false);
         setSyncStatus({
           type: 'success',
           message: 'Tài khoản này chưa có dữ liệu sao lưu trên Cloud. Bạn có thể nhấn "Lưu & Đồng Bộ WordPress" để tải dữ liệu đầu tiên lên máy chủ.'
@@ -128,7 +165,7 @@ export default function App() {
       if (isManualCheck) {
         setSyncStatus({
           type: 'error',
-          message: 'Không thể kết nối máy chủ WordPress để kiểm tra phiên bản. Vui lòng thử lại.'
+          message: 'Không thể kết nối máy chủ WordPress để kiểm tra phiên bản. Vui lòng kiểm tra lại mạng.'
         });
       }
     }
@@ -147,13 +184,139 @@ export default function App() {
     }
 
     try {
+      let loadedCustomers: Customer[] = [];
       const storedCustomers = localStorage.getItem('lws_customers');
       if (storedCustomers) {
-        setCustomers(JSON.parse(storedCustomers));
+        const parsed: Customer[] = JSON.parse(storedCustomers);
+        // Filter out sample customer records if present from previous sessions
+        loadedCustomers = parsed.filter((c: Customer) => !['cust-1', 'cust-2', 'cust-3', 'cust-4', 'cust-5', 'cust-6'].includes(c.id));
+        setCustomers(loadedCustomers);
+        localStorage.setItem('lws_customers', JSON.stringify(loadedCustomers));
       } else {
-        // Init with default realistic Vietnamese profiles
-        setCustomers(INITIAL_CUSTOMERS);
-        localStorage.setItem('lws_customers', JSON.stringify(INITIAL_CUSTOMERS));
+        setCustomers([]);
+        localStorage.setItem('lws_customers', JSON.stringify([]));
+      }
+
+      // Check URL query parameters to add customer via URL (e.g. ?name=...&phone=...&code=...&expiryDate=...)
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (window.location.hash.includes('?')) {
+          const hashQuery = window.location.hash.substring(window.location.hash.indexOf('?'));
+          const hashParams = new URLSearchParams(hashQuery);
+          hashParams.forEach((v, k) => {
+            if (!searchParams.has(k)) searchParams.set(k, v);
+          });
+        }
+
+        const nameParam = searchParams.get('name') || searchParams.get('ten') || searchParams.get('fullName') || searchParams.get('hoTen') || searchParams.get('n');
+        const phoneParam = searchParams.get('phone') || searchParams.get('sdt') || searchParams.get('mobile') || searchParams.get('p');
+        const codeParam = searchParams.get('insuranceCode') || searchParams.get('code') || searchParams.get('maSo') || searchParams.get('maBhyt') || searchParams.get('maBhxh') || searchParams.get('ma');
+        const actionParam = searchParams.get('action') || searchParams.get('add');
+
+        if (nameParam || phoneParam || codeParam || actionParam === 'add' || actionParam === 'true') {
+          setView('dashboard');
+
+          const typeParam = searchParams.get('type') || searchParams.get('loai') || searchParams.get('loaiHinh');
+          let type: 'BHYT' | 'BHXH' = 'BHYT';
+          let hasBHYT = true;
+          let hasBHXH = false;
+
+          if (typeParam) {
+            const upper = typeParam.toUpperCase();
+            if (upper.includes('BHXH')) {
+              type = 'BHXH';
+              hasBHXH = true;
+              if (!upper.includes('BHYT')) hasBHYT = false;
+            }
+            if (upper.includes('BHYT')) {
+              hasBHYT = true;
+            }
+          }
+
+          const expiryBHXHParam = normalizeDateParam(searchParams.get('expiryDateBHXH') || searchParams.get('hanBhxh'));
+          if (expiryBHXHParam) hasBHXH = true;
+
+          const expiryBHYTParam = normalizeDateParam(
+            searchParams.get('expiryDate') ||
+            searchParams.get('expiry') ||
+            searchParams.get('han') ||
+            searchParams.get('hanBhyt') ||
+            searchParams.get('ngayHetHan')
+          );
+
+          const queryCustomer: Customer = {
+            id: `cust-${Date.now()}`,
+            name: (nameParam || '').trim(),
+            phone: (phoneParam || '').trim(),
+            cccd: (searchParams.get('cccd') || searchParams.get('cmnd') || '').trim(),
+            insuranceCode: (codeParam || '').trim().toUpperCase(),
+            hasBHYT,
+            hasBHXH,
+            expiryDate: expiryBHYTParam || new Date().toISOString().split('T')[0],
+            expiryDateBHXH: expiryBHXHParam || (hasBHXH ? new Date().toISOString().split('T')[0] : undefined),
+            createdAt: new Date().toISOString().split('T')[0],
+            status: searchParams.get('status') === 'inactive' ? 'inactive' : 'active',
+            gender: normalizeGenderParam(searchParams.get('gender') || searchParams.get('gioiTinh')),
+            birthday: normalizeDateParam(searchParams.get('birthday') || searchParams.get('ngaySinh') || searchParams.get('ns')) || undefined,
+            address: (searchParams.get('address') || searchParams.get('diaChi') || '').trim() || undefined,
+            notes: (searchParams.get('notes') || searchParams.get('ghiChu') || '').trim() || undefined,
+            paymentHistory: []
+          };
+
+          const isAutoSave = searchParams.get('autoSave') === 'true' || searchParams.get('save') === 'true' || searchParams.get('auto') === '1' || actionParam === 'save';
+
+          if (isAutoSave && queryCustomer.name) {
+            const currentList = loadedCustomers;
+            const existingIndex = currentList.findIndex(c => 
+              (queryCustomer.insuranceCode && c.insuranceCode === queryCustomer.insuranceCode) ||
+              (queryCustomer.phone && c.phone === queryCustomer.phone) ||
+              (queryCustomer.name && c.name.toLowerCase() === queryCustomer.name.toLowerCase())
+            );
+
+            let updatedList: Customer[];
+            if (existingIndex >= 0) {
+              const existing = currentList[existingIndex];
+              const merged: Customer = {
+                ...existing,
+                ...queryCustomer,
+                id: existing.id,
+                paymentHistory: existing.paymentHistory || []
+              };
+              delete merged.lastRemindedDate;
+              delete merged.lastRemindedChannel;
+              delete merged.hinhThucNhac;
+              delete merged.lastRemindedType;
+              updatedList = [...currentList];
+              updatedList[existingIndex] = merged;
+            } else {
+              updatedList = [queryCustomer, ...currentList];
+            }
+
+            setCustomers(updatedList);
+            localStorage.setItem('lws_customers', JSON.stringify(updatedList));
+
+            setSyncStatus({
+              type: 'success',
+              message: `✅ Đã tự động thêm/cập nhật người dân "${queryCustomer.name}" từ URL query parameter!`
+            });
+          } else {
+            setSelectedEditCustomer(queryCustomer);
+            setIsAddCustomerOpen(true);
+            setSyncStatus({
+              type: 'success',
+              message: `📥 Đã nhận thông tin người dân "${queryCustomer.name || 'mới'}" từ URL. Vui lòng kiểm tra và bấm "Lưu thông tin"!`
+            });
+          }
+
+          try {
+            const cleanUrl = window.location.origin + window.location.pathname + '#dashboard';
+            window.history.replaceState({}, document.title, cleanUrl);
+          } catch (e) {
+            console.warn('Could not clean query URL:', e);
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing URL query parameters:', err);
       }
 
       const storedSettings = localStorage.getItem('lws_settings');
@@ -171,8 +334,10 @@ export default function App() {
         if (
           parsed.agencyName === 'Bảo Hiểm An Bình - Đại Lý Long Web Studio' ||
           parsed.agencyName === 'Hồ Thị Thắm - Nhân viên thu BHXH, BHYT bưu điện VHX Tự Lập' ||
+          parsed.agencyName === 'Lỗ Văn Long' ||
           parsed.agentPhone === '0987654321' ||
-          parsed.agentPhone === '0978333963'
+          parsed.agentPhone === '0978333963' ||
+          parsed.agentPhone === '0374638603'
         ) {
           merged.agencyName = INITIAL_SETTINGS.agencyName;
           merged.agentPhone = INITIAL_SETTINGS.agentPhone;
@@ -244,21 +409,41 @@ export default function App() {
   const handleSaveCustomer = (customer: Customer, parallelCustomer?: Customer) => {
     let updated = [...customers];
     
+    const processCustomer = (cToSave: Customer, cExisting?: Customer): Customer => {
+      if (!cExisting) return cToSave;
+
+      const isExpiryChanged = (cToSave.expiryDate && cToSave.expiryDate !== cExisting.expiryDate) ||
+                             (cToSave.expiryDateBHXH && cToSave.expiryDateBHXH !== cExisting.expiryDateBHXH);
+      const isPaymentAdded = (cToSave.paymentHistory?.length || 0) > (cExisting.paymentHistory?.length || 0);
+
+      if (isExpiryChanged || isPaymentAdded) {
+        const cleaned = { ...cToSave };
+        delete cleaned.lastRemindedDate;
+        delete cleaned.lastRemindedChannel;
+        delete cleaned.hinhThucNhac;
+        delete cleaned.lastRemindedType;
+        return cleaned;
+      }
+      return cToSave;
+    };
+
     // Save/update first customer
-    const exists1 = updated.some(c => c.id === customer.id);
-    if (exists1) {
-      updated = updated.map(c => c.id === customer.id ? customer : c);
+    const existing1 = updated.find(c => c.id === customer.id);
+    const processed1 = processCustomer(customer, existing1);
+    if (existing1) {
+      updated = updated.map(c => c.id === customer.id ? processed1 : c);
     } else {
-      updated = [customer, ...updated];
+      updated = [processed1, ...updated];
     }
     
     // Save/update parallel customer if provided
     if (parallelCustomer) {
-      const exists2 = updated.some(c => c.id === parallelCustomer.id);
-      if (exists2) {
-        updated = updated.map(c => c.id === parallelCustomer.id ? parallelCustomer : c);
+      const existing2 = updated.find(c => c.id === parallelCustomer.id);
+      const processed2 = processCustomer(parallelCustomer, existing2);
+      if (existing2) {
+        updated = updated.map(c => c.id === parallelCustomer.id ? processed2 : c);
       } else {
-        updated = [parallelCustomer, ...updated];
+        updated = [processed2, ...updated];
       }
     }
     
@@ -363,7 +548,11 @@ export default function App() {
           mergedExpiryDateBHXH = newCust.expiryDateBHXH;
         }
 
-        updated[matchIndex] = {
+        const isExpiryChanged = (mergedExpiryDate && mergedExpiryDate !== existing.expiryDate) ||
+                               (mergedExpiryDateBHXH && mergedExpiryDateBHXH !== existing.expiryDateBHXH);
+        const isPaymentAdded = updatedHistory.length > (existing.paymentHistory?.length || 0);
+
+        const mergedCust: Customer = {
           ...existing,
           phone: mergedPhone,
           cccd: mergedCccd,
@@ -381,6 +570,15 @@ export default function App() {
             ? (existing.notes.includes(newCust.notes || '') ? existing.notes : `${existing.notes}\n${newCust.notes || ''}`).substring(0, 500)
             : newCust.notes
         };
+
+        if (isExpiryChanged || isPaymentAdded) {
+          delete mergedCust.lastRemindedDate;
+          delete mergedCust.lastRemindedChannel;
+          delete mergedCust.hinhThucNhac;
+          delete mergedCust.lastRemindedType;
+        }
+
+        updated[matchIndex] = mergedCust;
       } else {
         // Add as new customer
         updated.unshift({
@@ -394,9 +592,9 @@ export default function App() {
   };
 
   const handleResetDemoData = () => {
-    setCustomers(INITIAL_CUSTOMERS);
+    setCustomers([]);
     setSettings(INITIAL_SETTINGS);
-    localStorage.setItem('lws_customers', JSON.stringify(INITIAL_CUSTOMERS));
+    localStorage.setItem('lws_customers', JSON.stringify([]));
     localStorage.setItem('lws_settings', JSON.stringify(INITIAL_SETTINGS));
   };
 

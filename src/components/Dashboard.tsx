@@ -129,7 +129,7 @@ export default function Dashboard({
   // search, filters & view layout
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'All' | 'BHYT' | 'BHXH'>('All');
-  const [filterPeriod, setFilterPeriod] = useState<'All' | 'Expired' | '3Days' | '7Days' | 'Safe'>('All');
+  const [filterPeriod, setFilterPeriod] = useState<'All' | 'Expired' | '3Days' | '7Days' | '30Days' | 'Safe'>('All');
   const [filterStatus, setFilterStatus] = useState<'All' | 'active' | 'inactive'>('All');
   const [filterReminder, setFilterReminder] = useState<'All' | 'NotReminded' | 'Reminded'>('All');
   const [filterPayer, setFilterPayer] = useState<string>('All');
@@ -216,7 +216,6 @@ export default function Dashboard({
 
   // browser push notifications & simulation states
   const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied'>('default');
-  const [simulatedTodayCustId, setSimulatedTodayCustId] = useState<string | null>(null);
   const lastNotifiedCountRef = useRef(-1);
 
   // States for interactive monthly revenue chart
@@ -264,6 +263,8 @@ export default function Dashboard({
     let expiredCount = 0;
     let in3DaysCount = 0;
     let in7DaysCount = 0;
+    let in30DaysCount = 0;
+    let warning7DaysCount = 0;
     let totalCollectedAmount = 0;
     let totalEstimatedCommission = 0;
     let bhxhCollected = 0;
@@ -274,15 +275,19 @@ export default function Dashboard({
     let upcomingExpiryCustomers = 0;
 
     customers.forEach(cust => {
+      const isReminded = !!cust.lastRemindedDate;
+
       // Check if candidate is active and has upcoming BHYT/BHXH expiry within 7 days
       if (cust.status === 'active') {
         const diffBHYT = (cust.hasBHYT !== false && cust.expiryDate) ? getDaysDiff(cust.expiryDate) : null;
         const diffBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
         
-        const isBHYTUpcoming = diffBHYT !== null && diffBHYT >= 0 && diffBHYT <= 7;
-        const isBHXHUpcoming = diffBHXH !== null && diffBHXH >= 0 && diffBHXH <= 7;
+        const isBHYTWarning = diffBHYT !== null && diffBHYT <= 7;
+        const isBHXHWarning = diffBHXH !== null && diffBHXH <= 7;
         
-        if (isBHYTUpcoming || isBHXHUpcoming) {
+        // Cảnh báo hết hạn trước 7 ngày - Nếu đã nhắc hạn thì bỏ cảnh báo
+        if ((isBHYTWarning || isBHXHWarning) && !isReminded) {
+          warning7DaysCount++;
           upcomingExpiryCustomers++;
         }
       }
@@ -290,24 +295,26 @@ export default function Dashboard({
       // 1. Check BHYT (if participating)
       if (cust.hasBHYT !== false && cust.expiryDate && cust.status === 'active') {
         const diffBHYT = getDaysDiff(cust.expiryDate);
+        const isReminded = !!cust.lastRemindedDate;
         if (diffBHYT < 0) {
-          expiredCount++;
-        } else if (diffBHYT <= 3) {
-          in3DaysCount++;
-        } else if (diffBHYT <= 7) {
-          in7DaysCount++;
+          if (!isReminded) expiredCount++;
+        } else {
+          if (diffBHYT <= 3 && !isReminded) in3DaysCount++;
+          if (diffBHYT <= 7 && !isReminded) in7DaysCount++;
+          if (diffBHYT <= 30) in30DaysCount++;
         }
       }
 
       // 2. Check BHXH (if participating)
       if (cust.hasBHXH && cust.expiryDateBHXH && cust.status === 'active') {
         const diffBHXH = getDaysDiff(cust.expiryDateBHXH);
+        const isReminded = !!cust.lastRemindedDate;
         if (diffBHXH < 0) {
-          expiredCount++;
-        } else if (diffBHXH <= 3) {
-          in3DaysCount++;
-        } else if (diffBHXH <= 7) {
-          in7DaysCount++;
+          if (!isReminded) expiredCount++;
+        } else {
+          if (diffBHXH <= 3 && !isReminded) in3DaysCount++;
+          if (diffBHXH <= 7 && !isReminded) in7DaysCount++;
+          if (diffBHXH <= 30) in30DaysCount++;
         }
       }
 
@@ -336,6 +343,8 @@ export default function Dashboard({
       expiredCount,
       in3DaysCount,
       in7DaysCount,
+      in30DaysCount,
+      warning7DaysCount,
       totalCollectedAmount,
       totalEstimatedCommission,
       bhxhCollected,
@@ -461,29 +470,35 @@ export default function Dashboard({
       const matchesStatus = filterStatus === 'All' || cust.status === filterStatus;
 
       // 4. Period Expiry filter
-      let targetExpiryDate = '';
-      if (filterType === 'BHXH' && cust.hasBHXH && cust.expiryDateBHXH) {
-        targetExpiryDate = cust.expiryDateBHXH;
-      } else if (cust.hasBHYT !== false && cust.expiryDate) {
-        targetExpiryDate = cust.expiryDate;
-      } else if (cust.hasBHXH && cust.expiryDateBHXH) {
-        targetExpiryDate = cust.expiryDateBHXH;
-      }
-
       let matchesPeriod = true;
-      if (targetExpiryDate) {
-        const diff = getDaysDiff(targetExpiryDate);
-        if (filterPeriod === 'Expired') {
-          matchesPeriod = diff < 0;
-        } else if (filterPeriod === '3Days') {
-          matchesPeriod = diff >= 0 && diff <= 3;
-        } else if (filterPeriod === '7Days') {
-          matchesPeriod = diff >= 4 && diff <= 7;
-        } else if (filterPeriod === 'Safe') {
-          matchesPeriod = diff > 7;
+      if (filterPeriod !== 'All') {
+        const diffBHYT = (cust.hasBHYT !== false && cust.expiryDate) ? getDaysDiff(cust.expiryDate) : null;
+        const diffBHXH = (cust.hasBHXH && cust.expiryDateBHXH) ? getDaysDiff(cust.expiryDateBHXH) : null;
+        const isReminded = !!cust.lastRemindedDate;
+
+        const checkDiff = (diff: number | null) => {
+          if (diff === null) return false;
+          if (filterPeriod === 'Expired') return diff < 0 && !isReminded;
+          if (filterPeriod === '3Days') return diff >= 0 && diff <= 3 && !isReminded;
+          if (filterPeriod === '7Days') return diff <= 7 && !isReminded;
+          if (filterPeriod === '30Days') return diff >= 0 && diff <= 30;
+          if (filterPeriod === 'Safe') return diff > 30;
+          return true;
+        };
+
+        if (filterType === 'BHYT') {
+          matchesPeriod = checkDiff(diffBHYT);
+        } else if (filterType === 'BHXH') {
+          matchesPeriod = checkDiff(diffBHXH);
+        } else {
+          if (filterPeriod === 'Safe') {
+            const bhytSafe = diffBHYT === null || diffBHYT > 30;
+            const bhxhSafe = diffBHXH === null || diffBHXH > 30;
+            matchesPeriod = (diffBHYT !== null || diffBHXH !== null) && bhytSafe && bhxhSafe;
+          } else {
+            matchesPeriod = checkDiff(diffBHYT) || checkDiff(diffBHXH);
+          }
         }
-      } else if (filterPeriod !== 'All') {
-        matchesPeriod = false;
       }
 
       // 5. Reminder status filter
@@ -513,20 +528,23 @@ export default function Dashboard({
     });
   }, [customers, searchQuery, filterType, filterStatus, filterPeriod, filterReminder, filterPayer, getDaysDiff]);
 
-  // Khách hàng cần đóng tiền bảo hiểm TRONG NGÀY HÔM NAY (tính theo ngày thực tế)
+  // Khách hàng phát CẢNH BÁO HẾT HẠN TRONG 7 NGÀY (hoặc quá hạn) CHƯA ĐƯỢC NHẮC HẠN
   const todayCustomers = useMemo(() => {
     return customers.filter(cust => {
       if (cust.status !== 'active') return false;
-      const isSimulatedToday = simulatedTodayCustId === cust.id;
       
-      const diffBHYT = isSimulatedToday ? 0 : getDaysDiff(cust.expiryDate);
-      const diffBHXH = cust.hasBHXH && cust.expiryDateBHXH 
-        ? (isSimulatedToday ? 0 : getDaysDiff(cust.expiryDateBHXH))
-        : null;
+      // Nếu đã nhắc hạn thì BỎ CẢNH BÁO
+      if (cust.lastRemindedDate) return false;
+
+      const diffBHYT = cust.hasBHYT !== false && cust.expiryDate ? getDaysDiff(cust.expiryDate) : null;
+      const diffBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
         
-      return diffBHYT === 0 || diffBHXH === 0;
+      const isBHYTWarning = diffBHYT !== null && diffBHYT <= 7;
+      const isBHXHWarning = diffBHXH !== null && diffBHXH <= 7;
+
+      return isBHYTWarning || isBHXHWarning;
     });
-  }, [customers, getDaysDiff, simulatedTodayCustId]);
+  }, [customers, getDaysDiff]);
 
   // Kiểm tra quyền nhận thông báo trên trình duyệt
   useEffect(() => {
@@ -707,6 +725,19 @@ export default function Dashboard({
       // Persist values
       onUpdateCustomer(updatedCustomer);
     }
+  };
+
+  // Quick mark customer as reminded (clears warning)
+  const handleMarkAsReminded = (cust: Customer, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updatedCustomer: Customer = {
+      ...cust,
+      lastRemindedDate: todayStr,
+      lastRemindedChannel: cust.hinhThucNhac || 'Zalo',
+      lastRemindedType: cust.hasBHYT !== false ? 'BHYT' : 'BHXH'
+    };
+    onUpdateCustomer(updatedCustomer);
   };
 
   // Backup exporter (Downloads a JSON string)
@@ -1114,63 +1145,7 @@ export default function Dashboard({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
-              {/* Browser Notification Permission status button */}
-              {notifPermission === 'default' && (
-                <button
-                  type="button"
-                  onClick={handleRequestNotificationPermission}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  Bật thông báo trình duyệt
-                </button>
-              )}
-              {notifPermission === 'granted' && (
-                <span className="px-2.5 py-1.5 bg-emerald-950 text-emerald-400 border border-emerald-900/60 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 shrink-0 select-none">
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  Đồng ý phát cảnh báo nổi
-                </span>
-              )}
-              {notifPermission === 'denied' && (
-                <span className="px-2.5 py-1.5 bg-rose-955/50 text-rose-300 border border-rose-900/45 text-[10px] font-bold rounded-lg uppercase shrink-0" title="Hãy nhấp biểu tượng ổ khóa cạnh địa chỉ web để cho phép lại thông báo">
-                  ⚠️ Thông báo bị Chặn
-                </span>
-              )}
 
-              {/* Test button */}
-              <button
-                type="button"
-                onClick={handleTestNotificationResponse}
-                className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer shrink-0"
-                title="Gửi thử một thông báo trình duyệt hệ thống"
-              >
-                Gửi Test thử
-              </button>
-
-              {/* Simulation/Demo button */}
-              {simulatedTodayCustId ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSimulatedTodayCustId(null);
-                    lastNotifiedCountRef.current = -1;
-                  }}
-                  className="px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900/40 text-rose-300 border border-rose-905 rounded-lg text-[10px] font-black transition-all cursor-pointer shrink-0"
-                >
-                  🔴 Tắt Mô phỏng (today)
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setSimulatedTodayCustId('cust-1')}
-                  className="px-2.5 py-1.5 bg-amber-955/40 hover:bg-amber-900/40 text-amber-300 border border-amber-905 rounded-lg text-[10px] font-black transition-all cursor-pointer shrink-0"
-                  title="Giả lập Nguyễn Văn Hùng hết hạn hôm nay"
-                >
-                  ⚡ Giả lập hạn hôm nay
-                </button>
-              )}
-            </div>
           </div>
 
           {/* Alert list section */}
@@ -1180,18 +1155,21 @@ export default function Dashboard({
                 <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
                 <div className="space-y-0.5">
                   <h4 className="text-xs font-black text-amber-300 uppercase tracking-wide">
-                    PHÁT HIỆN CẢNH BÁO: CÓ {todayCustomers.length} NGƯỜI DÂN CẦN ĐÓNG PHÍ HÔM NAY!
+                    🚨 CẢNH BÁO HẾT HẠN (TRONG 7 NGÀY): CÓ {todayCustomers.length} NGƯỜI DÂN CHƯA NHẮC HẠN!
                   </h4>
                   <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                    Vui lòng gửi tin nhắn gia hạn ngay lập tức thông qua các tùy chọn nhắn tin nhanh trên nền tảng Zalo hay SMS dưới đây để nhắc đóng bảo hiểm đúng hạn hôm nay.
+                    Hệ thống tự động phát hiện các thẻ BHYT / BHXH sắp hết hạn trong 7 ngày tới (hoặc đã quá hạn) chưa gửi tin nhắn nhắc nhở. Nhấp gửi tin nhắn hoặc 'Đã nhắc' để tự động loại bỏ cảnh báo.
                   </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {todayCustomers.map(cust => {
-                  const hasBHYTToday = simulatedTodayCustId === cust.id || getDaysDiff(cust.expiryDate) === 0;
-                  const hasBHXHToday = cust.hasBHXH && cust.expiryDateBHXH && (simulatedTodayCustId === cust.id || getDaysDiff(cust.expiryDateBHXH) === 0);
+                  const diffBHYT = cust.hasBHYT !== false && cust.expiryDate ? getDaysDiff(cust.expiryDate) : null;
+                  const diffBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
+
+                  const isBHYTWarning = diffBHYT !== null && diffBHYT <= 7;
+                  const isBHXHWarning = diffBHXH !== null && diffBHXH <= 7;
 
                   return (
                     <div key={cust.id} className="bg-slate-950 border border-slate-850/60 p-3.5 rounded-xl flex items-center justify-between gap-3 hover:border-amber-900/40 transition-colors">
@@ -1235,21 +1213,33 @@ export default function Dashboard({
                         </div>
                         
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          {hasBHYTToday && (
-                            <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-rose-950/40 text-rose-300 border border-rose-900/50 uppercase">
-                              Hết hạn BHYT hôm nay
+                          {isBHYTWarning && diffBHYT !== null && (
+                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase border ${
+                              diffBHYT < 0
+                                ? 'bg-rose-950/60 text-rose-300 border-rose-900/60'
+                                : diffBHYT === 0
+                                ? 'bg-rose-950/40 text-rose-300 border-rose-900/50'
+                                : 'bg-amber-955/40 text-amber-300 border-amber-900/50'
+                            }`}>
+                              BHYT: {diffBHYT < 0 ? `Quá hạn ${-diffBHYT}d` : diffBHYT === 0 ? 'Hết hạn hôm nay' : `Còn ${diffBHYT} ngày`}
                             </span>
                           )}
-                          {hasBHXHToday && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-955/40 text-amber-300 border border-amber-900/50 uppercase">
-                              Kỳ đóng BHXH hôm nay
+                          {isBHXHWarning && diffBHXH !== null && (
+                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase border ${
+                              diffBHXH < 0
+                                ? 'bg-rose-950/60 text-rose-300 border-rose-900/60'
+                                : diffBHXH === 0
+                                ? 'bg-rose-955/40 text-amber-300 border-rose-900/50'
+                                : 'bg-amber-955/40 text-amber-300 border-amber-900/50'
+                            }`}>
+                              BHXH: {diffBHXH < 0 ? `Quá hạn ${-diffBHXH}d` : diffBHXH === 0 ? 'Hết hạn hôm nay' : `Còn ${diffBHXH} ngày`}
                             </span>
                           )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {hasBHYTToday && (
+                        {isBHYTWarning && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1263,7 +1253,7 @@ export default function Dashboard({
                             Nhắc BHYT
                           </button>
                         )}
-                        {hasBHXHToday && (
+                        {isBHXHWarning && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1279,11 +1269,12 @@ export default function Dashboard({
                         )}
                         <button
                           type="button"
-                          onClick={() => onOpenEditModal(cust)}
-                          className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-lg transition-all cursor-pointer"
-                          title="Sửa hồ sơ người dân"
+                          onClick={(e) => handleMarkAsReminded(cust, e)}
+                          className="text-[10px] font-bold px-2 py-1.5 bg-slate-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-slate-800 hover:border-emerald-700/60 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                          title="Đánh dấu đã nhắc hạn (loại bỏ cảnh báo)"
                         >
-                          <Settings className="w-3.5 h-3.5" />
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span>Đã nhắc</span>
                         </button>
                       </div>
                     </div>
@@ -1294,8 +1285,8 @@ export default function Dashboard({
           ) : (
             <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-4 text-center">
               <div className="text-slate-400 text-xs flex items-center justify-center gap-2 select-none">
-                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping shrink-0" />
-                <span>Không có thẻ gia hạn nào hết hạn vào ngày hôm nay. Hãy bấm nút <strong>Giả lập hạn hôm nay</strong> để kiểm chứng hoạt động.</span>
+                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0" />
+                <span>Không có cảnh báo nào trong 7 ngày tới chưa nhắc. Tất cả thẻ hết hạn đều đã được nhắc nhở đầy đủ!</span>
               </div>
             </div>
           )}
@@ -1316,7 +1307,13 @@ export default function Dashboard({
           </div>
 
           {/* Card 2: Expired block */}
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xs flex items-center gap-3">
+          <div 
+            onClick={() => setFilterPeriod(filterPeriod === 'Expired' ? 'All' : 'Expired')}
+            className={`bg-slate-900 rounded-2xl border p-4 shadow-xs flex items-center gap-3 cursor-pointer transition-all hover:border-rose-700/80 ${
+              filterPeriod === 'Expired' ? 'border-rose-500 bg-rose-955/20' : 'border-slate-800'
+            }`}
+            title="Nhấp để lọc danh sách người dân đã quá hạn đóng"
+          >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${stats.expiredCount > 0 ? 'bg-rose-950/60 border border-rose-900 text-rose-400 animate-pulse' : 'bg-slate-950 text-slate-500 border border-slate-850'}`}>
               <Bell className="w-5 h-5" />
             </div>
@@ -1326,15 +1323,21 @@ export default function Dashboard({
             </div>
           </div>
 
-          {/* Card 3: Expiring soon (3-7 days) */}
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xs flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${stats.in3DaysCount + stats.in7DaysCount > 0 ? 'bg-amber-955/60 border border-amber-900/60 text-amber-400' : 'bg-slate-950 text-slate-500 border border-slate-850'}`}>
+          {/* Card 3: Expiring soon (30 days) */}
+          <div 
+            onClick={() => setFilterPeriod(filterPeriod === '30Days' ? 'All' : '30Days')}
+            className={`bg-slate-900 rounded-2xl border p-4 shadow-xs flex items-center gap-3 cursor-pointer transition-all hover:border-amber-700/80 ${
+              filterPeriod === '30Days' ? 'border-amber-500 bg-amber-955/20' : 'border-slate-800'
+            }`}
+            title="Nhấp để lọc danh sách người dân có BHYT hoặc BHXH sắp hết hạn trong 30 ngày tới"
+          >
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${stats.in30DaysCount > 0 ? 'bg-amber-955/60 border border-amber-900/60 text-amber-400' : 'bg-slate-950 text-slate-500 border border-slate-850'}`}>
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Hạn trong tuần (3-7d)</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Sắp hết hạn (30 ngày)</span>
               <span className="text-xl font-black font-mono text-white block">
-                {stats.in3DaysCount + stats.in7DaysCount}
+                {stats.in30DaysCount}
               </span>
             </div>
           </div>
@@ -1928,14 +1931,35 @@ export default function Dashboard({
               <select
                 value={filterPeriod}
                 onChange={(e) => setFilterPeriod(e.target.value as any)}
-                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500"
+                className="text-xs px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 focus:outline-none cursor-pointer focus:border-emerald-500 font-medium"
               >
                 <option value="All">Nhắc hạn: Tất cả mốc</option>
-                <option value="Expired">⌛ Đã quá hạn</option>
-                <option value="3Days">⚠️ Sắp hết hạn trong 3 ngày</option>
-                <option value="7Days">🗓️ Sắp hết hạn trong 7 ngày</option>
+                <option value="Expired">⌛ Đã quá hạn ({stats.expiredCount})</option>
+                <option value="3Days">⚠️ Sắp hết hạn trong 3 ngày ({stats.in3DaysCount})</option>
+                <option value="7Days">🗓️ Sắp hết hạn trong 7 ngày ({stats.in7DaysCount})</option>
+                <option value="30Days">📅 Sắp hết hạn trong 30 ngày ({stats.in30DaysCount})</option>
                 <option value="Safe">✓ Trạng thái an toàn</option>
               </select>
+
+              {/* Quick Filter Pill: Hạn 30 ngày */}
+              <button
+                type="button"
+                onClick={() => setFilterPeriod(filterPeriod === '30Days' ? 'All' : '30Days')}
+                className={`text-xs px-2.5 py-1.5 border rounded-lg flex items-center gap-1.5 cursor-pointer select-none transition-all font-medium ${
+                  filterPeriod === '30Days'
+                    ? 'bg-amber-950/80 border-amber-700 text-amber-300 shadow-xs'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+                title="Lọc nhanh danh sách người dân có BHYT hoặc BHXH sắp hết hạn trong vòng 30 ngày tới"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <span>Sắp hết hạn 30 ngày</span>
+                {stats.in30DaysCount > 0 && (
+                  <span className="ml-0.5 px-1.5 py-0.2 bg-amber-900/80 text-amber-300 text-[10px] font-mono font-bold rounded-full border border-amber-700/60">
+                    {stats.in30DaysCount}
+                  </span>
+                )}
+              </button>
 
               {/* Filter Status active/inactive */}
               <select

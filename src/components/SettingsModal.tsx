@@ -123,28 +123,28 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
       <div 
         id="settings-modal-card"
-        className="bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[90vh] transition-transform duration-300 text-slate-100"
+        className="bg-slate-900 rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[92vh] transition-transform duration-300 text-slate-100 my-auto"
       >
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-emerald-950 to-teal-900 border-b border-slate-850 text-white flex items-center justify-between">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-950 to-teal-900 border-b border-slate-850 text-white flex items-center justify-between shrink-0">
           <div>
-            <h3 className="text-lg font-semibold font-sans text-white">Cấu hình Hệ thống & Tin nhắn nháp</h3>
+            <h3 className="text-base sm:text-lg font-semibold font-sans text-white">Cấu hình Hệ thống & Tin nhắn nháp</h3>
             <p className="text-xs text-emerald-400 mt-0.5">Tùy biến thông tin nhân viên thu và tỷ lệ hoa hồng của riêng bạn</p>
           </div>
           <button 
             type="button" 
             onClick={onClose} 
-            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+            className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-0">
           {successMsg && (
             <div className="bg-emerald-950/50 border border-emerald-900 text-emerald-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-pulse">
               <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -169,20 +169,20 @@ export default function SettingsModal({
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm('Bạn có chắc chắn muốn khôi phục 5 khách hàng mẫu ban đầu?')) {
+                    if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu danh sách người dân trên máy này về trạng thái trống?')) {
                       onResetDemoData();
                       onClose();
                     }
                   }}
                   className="p-3 bg-slate-900 hover:bg-slate-850 text-rose-300 border border-slate-800 hover:border-rose-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
-                  title="Khôi phục 5 khách hàng mẫu ban đầu"
+                  title="Xóa trắng dữ liệu danh sách người dân cục bộ"
                 >
                   <div className="p-1.5 bg-rose-950 text-rose-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
                     <RefreshCcw className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="block text-slate-200 group-hover:text-white leading-tight">Khôi Phục Mẫu</span>
-                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Nạp lại 5 người mẫu</span>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Xóa Dữ Liệu</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Đặt lại danh sách rỗng</span>
                   </div>
                 </button>
               )}
@@ -830,7 +830,7 @@ export default function SettingsModal({
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-950/40 border-t border-slate-850 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-950/40 border-t border-slate-850 flex items-center justify-between shrink-0">
           {showResetConfirm ? (
             <div className="flex items-center gap-1.5 bg-rose-950/60 border border-slate-800 rounded-lg p-1 animate-fade-in text-slate-300">
               <span className="text-[10px] text-white font-bold px-1.5">Khôi phục?</span>
