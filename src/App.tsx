@@ -12,6 +12,7 @@ import SettingsModal from './components/SettingsModal';
 import ImportExcelModal from './components/ImportExcelModal';
 import CustomerModal from './components/CustomerModal';
 import WordPressAuth from './components/WordPressAuth';
+import VersionSyncModal, { CloudBackupInfo } from './components/VersionSyncModal';
 import { 
   getStoredWPUser, 
   clearWPAuth, 
@@ -44,6 +45,10 @@ export default function App() {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Cloud backup version alert states
+  const [cloudBackupNotice, setCloudBackupNotice] = useState<CloudBackupInfo | null>(null);
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
 
   // modal visibility states
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -82,12 +87,63 @@ export default function App() {
     }
   }, [view, settings.agencyName, customers.length]);
 
+  // Check Cloud Backup Version vs Local Version
+  const checkCloudVersion = async (userParam?: WPUser | null, isManualCheck: boolean = false) => {
+    const activeUser = userParam || wpUser;
+    if (!activeUser) return;
+
+    try {
+      const backup = await getBackupFromWordPress();
+      if (backup && backup.updatedAt) {
+        const cloudDateStr = backup.updatedAt.includes(' ') ? backup.updatedAt.replace(' ', 'T') : backup.updatedAt;
+        const cloudTs = new Date(cloudDateStr).getTime();
+
+        const localSyncedStr = settings.lastSyncedVersion;
+        let localSyncedTs = 0;
+        if (localSyncedStr) {
+          const localDateStr = localSyncedStr.includes(' ') ? localSyncedStr.replace(' ', 'T') : localSyncedStr;
+          localSyncedTs = new Date(localDateStr).getTime();
+        }
+
+        // Compare timestamps
+        const isCloudNewer = (cloudTs > localSyncedTs + 3000) || (!localSyncedStr && (backup.customers?.length || 0) > 0);
+
+        if (isCloudNewer) {
+          setCloudBackupNotice(backup as CloudBackupInfo);
+          setIsVersionModalOpen(true);
+        } else {
+          setSyncStatus({
+            type: 'success',
+            message: `Dữ liệu Sổ Thu hiện tại trên thiết bị đã khớp với phiên bản mới nhất trên Cloud (${backup.updatedAt}).`
+          });
+        }
+      } else if (isManualCheck) {
+        setSyncStatus({
+          type: 'success',
+          message: 'Tài khoản này chưa có dữ liệu sao lưu trên Cloud. Bạn có thể nhấn "Lưu & Đồng Bộ WordPress" để tải dữ liệu đầu tiên lên máy chủ.'
+        });
+      }
+    } catch (err: any) {
+      console.warn('Không thể kiểm tra phiên bản Sổ Thu trên Cloud:', err);
+      if (isManualCheck) {
+        setSyncStatus({
+          type: 'error',
+          message: 'Không thể kết nối máy chủ WordPress để kiểm tra phiên bản. Vui lòng thử lại.'
+        });
+      }
+    }
+  };
+
   // load state from LocalStorage on mount
   useEffect(() => {
     // Check if WordPress user is logged in
     const storedUser = getStoredWPUser();
     if (storedUser) {
       setWpUser(storedUser);
+      // Check cloud version after startup delay
+      setTimeout(() => {
+        checkCloudVersion(storedUser);
+      }, 1500);
     }
 
     try {
@@ -171,6 +227,12 @@ export default function App() {
   const saveCustomersToStorage = (updatedCustomers: Customer[]) => {
     setCustomers(updatedCustomers);
     localStorage.setItem('lws_customers', JSON.stringify(updatedCustomers));
+    const now = new Date().toISOString();
+    setSettings(prev => {
+      const updated = { ...prev, lastLocalUpdate: now };
+      localStorage.setItem('lws_settings', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleSaveSettings = (updatedSettings: UserSettings) => {
@@ -349,8 +411,16 @@ export default function App() {
     setIsSyncing(true);
     setSyncStatus(null);
     try {
-      await saveBackupToWordPress({ customers, settings });
-      setSyncStatus({ type: 'success', message: 'Đã sao lưu đồng bộ toàn bộ cơ sở dữ liệu lên WordPress thành công!' });
+      const res = await saveBackupToWordPress({ customers, settings });
+      const updatedVer = res?.updatedAt || new Date().toISOString();
+      const updatedSettings: UserSettings = {
+        ...settings,
+        lastSyncedVersion: updatedVer,
+      };
+      setSettings(updatedSettings);
+      localStorage.setItem('lws_settings', JSON.stringify(updatedSettings));
+
+      setSyncStatus({ type: 'success', message: `Đã sao lưu đồng bộ toàn bộ cơ sở dữ liệu Sổ Thu lên WordPress thành công! (Phiên bản: ${updatedVer})` });
     } catch (err: any) {
       setSyncStatus({ type: 'error', message: err.message || 'Lỗi đồng bộ dữ liệu lên WordPress.' });
     } finally {
@@ -364,20 +434,78 @@ export default function App() {
     try {
       const backup = await getBackupFromWordPress();
       if (backup) {
+        const updatedVer = backup.updatedAt || new Date().toISOString();
         if (backup.customers) {
           setCustomers(backup.customers);
           localStorage.setItem('lws_customers', JSON.stringify(backup.customers));
         }
-        if (backup.settings) {
-          setSettings(backup.settings);
-          localStorage.setItem('lws_settings', JSON.stringify(backup.settings));
-        }
-        setSyncStatus({ type: 'success', message: 'Đã tải & khôi phục toàn bộ dữ liệu từ WordPress Cloud thành công!' });
+        const mergedSettings: UserSettings = {
+          ...settings,
+          ...(backup.settings || {}),
+          lastSyncedVersion: updatedVer,
+        };
+        setSettings(mergedSettings);
+        localStorage.setItem('lws_settings', JSON.stringify(mergedSettings));
+
+        setSyncStatus({ type: 'success', message: `Đã tải & khôi phục toàn bộ Sổ Thu từ WordPress Cloud thành công! (Phiên bản: ${updatedVer})` });
       } else {
-        setSyncStatus({ type: 'error', message: 'Không tìm thấy bản sao lưu nào của Lws Nhắc Hạn trên tài khoản WordPress này.' });
+        setSyncStatus({ type: 'error', message: 'Không tìm thấy bản sao lưu Sổ Thu nào trên tài khoản WordPress này.' });
       }
     } catch (err: any) {
       setSyncStatus({ type: 'error', message: err.message || 'Lỗi tải bản sao lưu từ WordPress.' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDownloadCloudVersion = async (backup: CloudBackupInfo) => {
+    setIsSyncing(true);
+    try {
+      const updatedVer = backup.updatedAt || new Date().toISOString();
+      const mergedSettings: UserSettings = {
+        ...settings,
+        ...(backup.settings || {}),
+        lastSyncedVersion: updatedVer,
+      };
+
+      if (backup.customers) {
+        setCustomers(backup.customers);
+        localStorage.setItem('lws_customers', JSON.stringify(backup.customers));
+      }
+      setSettings(mergedSettings);
+      localStorage.setItem('lws_settings', JSON.stringify(mergedSettings));
+
+      setIsVersionModalOpen(false);
+      setSyncStatus({
+        type: 'success',
+        message: `Đã khôi phục & đồng bộ phiên bản Sổ Thu mới nhất từ Cloud (${backup.customers?.length || 0} người dân, cập nhật ${updatedVer}) thành công!`
+      });
+    } catch (err: any) {
+      setSyncStatus({ type: 'error', message: 'Lỗi khôi phục dữ liệu từ Cloud.' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleUploadLocalVersion = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await saveBackupToWordPress({ customers, settings });
+      const updatedVer = res?.updatedAt || new Date().toISOString();
+      const updatedSettings: UserSettings = {
+        ...settings,
+        lastSyncedVersion: updatedVer,
+      };
+      setSettings(updatedSettings);
+      localStorage.setItem('lws_settings', JSON.stringify(updatedSettings));
+
+      setIsVersionModalOpen(false);
+      setSyncStatus({
+        type: 'success',
+        message: `Đã sao lưu ghi đè dữ liệu thiết bị hiện tại lên WordPress Cloud thành công! (Phiên bản: ${updatedVer})`
+      });
+    } catch (err: any) {
+      setSyncStatus({ type: 'error', message: err.message || 'Lỗi ghi đè dữ liệu lên Cloud.' });
     } finally {
       setIsSyncing(false);
     }
@@ -394,6 +522,9 @@ export default function App() {
           onSuccess={(user) => {
             setWpUser(user);
             setSyncStatus({ type: 'success', message: `Chào mừng ${user.name || user.username}! Bạn đã đăng nhập thành công qua WordPress GraphQL.` });
+            setTimeout(() => {
+              checkCloudVersion(user);
+            }, 800);
           }}
           onBypass={() => setIsOfflineMode(true)}
         />
@@ -407,6 +538,7 @@ export default function App() {
           onLogoutWP={handleLogoutWP}
           onSyncWP={handleSyncWP}
           onLoadBackupWP={handleLoadBackupWP}
+          onCheckCloudVersion={() => checkCloudVersion(undefined, true)}
           onClearSyncStatus={() => setSyncStatus(null)}
           onAddCustomer={handleSaveCustomer}
           onUpdateCustomer={handleSaveCustomer}
@@ -495,6 +627,20 @@ export default function App() {
           onClose={() => setSelectedEditCustomer(null)}
           onSwitchCustomer={(cust) => setSelectedEditCustomer(cust)}
           onDelete={handleDeleteCustomer}
+        />
+      )}
+
+      {/* Cloud Backup Version Alert Modal */}
+      {isVersionModalOpen && cloudBackupNotice && (
+        <VersionSyncModal
+          isOpen={isVersionModalOpen}
+          onClose={() => setIsVersionModalOpen(false)}
+          cloudBackup={cloudBackupNotice}
+          localCustomers={customers}
+          localSettings={settings}
+          onDownloadCloud={handleDownloadCloudVersion}
+          onUploadLocal={handleUploadLocalVersion}
+          isSyncing={isSyncing}
         />
       )}
 

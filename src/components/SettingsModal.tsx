@@ -5,10 +5,10 @@
 
 import React, { useState } from 'react';
 import { UserSettings, CommissionMatrix } from '../types';
-import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle } from 'lucide-react';
+import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle, Database, Copy, Check, Code } from 'lucide-react';
 import { INITIAL_SETTINGS } from '../mockData';
 import { DEFAULT_COMMISSION_MATRIX } from '../lib/commission';
-import { getStoredWordPressUrl, setStoredWordPressUrl, DEFAULT_ENDPOINT } from '../lib/graphql';
+import { getStoredWordPressUrl, setStoredWordPressUrl, DEFAULT_ENDPOINT, WORDPRESS_PHP_CUSTOM_TABLE_CODE, WORDPRESS_SQL_CODE } from '../lib/graphql';
 
 interface SettingsModalProps {
   settings: UserSettings;
@@ -36,7 +36,15 @@ export default function SettingsModal({
     commissionMatrix: settings.commissionMatrix || DEFAULT_COMMISSION_MATRIX
   });
   const [wpGraphqlUrl, setWpGraphqlUrl] = useState(getStoredWordPressUrl());
+  const [showWpCodeModal, setShowWpCodeModal] = useState(false);
+  const [copiedType, setCopiedType] = useState<'php' | 'sql' | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
+
+  const handleCopyCode = (text: string, type: 'php' | 'sql') => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(null), 2500);
+  };
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [activeCommissionTab, setActiveCommissionTab] = useState<'bhyt' | 'bhxh'>('bhyt');
 
@@ -622,6 +630,74 @@ export default function SettingsModal({
                 <p className="text-[10px] text-slate-400 leading-relaxed">
                   Cấu hình URL kết nối WPGraphQL của máy chủ WordPress. Bạn có thể sử dụng máy chủ WordPress riêng hoặc dùng mặc định: <code className="text-emerald-400 font-mono break-all">{DEFAULT_ENDPOINT}</code>
                 </p>
+              </div>
+
+              {/* WordPress Custom Table wp_lws_so_thu Info & Code Drawer */}
+              <div className="pt-3 border-t border-slate-850 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-emerald-300">Cấu hình Bảng Riêng WordPress (wp_lws_so_thu) & WPGraphQL</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowWpCodeModal(!showWpCodeModal)}
+                    className="px-2.5 py-1 text-[11px] font-medium text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Code className="w-3.5 h-3.5" />
+                    <span>{showWpCodeModal ? 'Ẩn mã Nguồn Plugin' : 'Xem Code Plugin & SQL'}</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Ứng dụng hỗ trợ tự động lưu dữ liệu bản online trực tiếp vào bảng MySQL riêng <code className="text-emerald-400 font-mono font-semibold">wp_lws_so_thu</code> (Mỗi user sở hữu 1 Sổ thu chứa danh sách khách hàng & cấu hình) thông qua WPGraphQL Mutation <code className="text-emerald-400 font-mono">saveLwsSoThuBackup</code>.
+                </p>
+
+                {showWpCodeModal && (
+                  <div className="mt-3 p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl space-y-4 text-xs">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                          <Code className="w-3.5 h-3.5 text-amber-400" />
+                          1. Mã PHP Plugin WordPress (Dành cho WPGraphQL)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(WORDPRESS_PHP_CUSTOM_TABLE_CODE, 'php')}
+                          className="px-2.5 py-1 text-[10px] font-bold bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-800/60 rounded flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedType === 'php' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedType === 'php' ? 'Đã Sao Chép!' : 'Sao Chép PHP'}</span>
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Sao chép đoạn mã bên dưới lưu thành file <code className="text-amber-300 font-mono">lws-so-thu.php</code> thả vào thư mục <code className="text-amber-300 font-mono">wp-content/plugins/lws-so-thu/</code> trên máy chủ WordPress và Kích hoạt plugin.
+                      </p>
+                      <pre className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-mono text-emerald-400 max-h-48 overflow-y-auto whitespace-pre-wrap select-all">
+                        {WORDPRESS_PHP_CUSTOM_TABLE_CODE}
+                      </pre>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sky-300 flex items-center gap-1.5">
+                          <Database className="w-3.5 h-3.5 text-sky-400" />
+                          2. Cấu Trúc Bảng MySQL (wp_lws_so_thu)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCode(WORDPRESS_SQL_CODE, 'sql')}
+                          className="px-2.5 py-1 text-[10px] font-bold bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-800/60 rounded flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedType === 'sql' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedType === 'sql' ? 'Đã Sao Chép!' : 'Sao Chép SQL'}</span>
+                        </button>
+                      </div>
+                      <pre className="p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-mono text-sky-300 max-h-32 overflow-y-auto whitespace-pre-wrap select-all">
+                        {WORDPRESS_SQL_CODE}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

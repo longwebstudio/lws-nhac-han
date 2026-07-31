@@ -4,9 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Shield, Bell, FileSpreadsheet, Search, BarChart3, ChevronRight, Check, Star, ExternalLink, UserCheck, Sparkles, Copy, HelpCircle, Building2, Server, PhoneCall } from 'lucide-react';
+import { Shield, Bell, FileSpreadsheet, Search, BarChart3, ChevronRight, Check, Star, ExternalLink, UserCheck, Sparkles, Copy, HelpCircle, Building2, Server, PhoneCall, Download, WifiOff, Smartphone } from 'lucide-react';
 import QuickGuideModal from './QuickGuideModal';
 import TermsModal from './TermsModal';
+import PWAInstallModal from './PWAInstallModal';
 
 interface LandingPageProps {
   onEnterApp: () => void;
@@ -15,6 +16,7 @@ interface LandingPageProps {
 export default function LandingPage({ onEnterApp }: LandingPageProps) {
   const [showQuickGuideModal, setShowQuickGuideModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPwaModal, setShowPwaModal] = useState(false);
 
   const todayFormatted = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -30,10 +32,22 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
         isOpen={showTermsModal}
         onClose={() => setShowTermsModal(false)}
       />
+
+      <PWAInstallModal
+        isOpen={showPwaModal}
+        onClose={() => setShowPwaModal(false)}
+      />
       
       {/* Top Notification Bar */}
-      <div className="bg-emerald-950 text-emerald-300 text-xs py-2 px-4 text-center font-medium select-none">
-        🎉 Sổ thu bảo hiểm Online tiện lợi & miễn phí dành cho nhân viên thu BHXH, BHYT từ <a href="https://longwebstudio.io.vn" target="_blank" rel="noreferrer" className="underline hover:text-white font-semibold">Freelancer Long Web Studio</a>
+      <div className="bg-emerald-950 text-emerald-300 text-xs py-2 px-4 text-center font-medium select-none flex items-center justify-center gap-2">
+        <span>🎉 Sổ thu bảo hiểm Online tiện lợi & miễn phí từ <a href="https://longwebstudio.io.vn" target="_blank" rel="noreferrer" className="underline hover:text-white font-semibold">Freelancer Long Web Studio</a></span>
+        <button
+          onClick={() => setShowPwaModal(true)}
+          className="hidden sm:inline-flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 px-2.5 py-0.5 rounded-full border border-emerald-500/40 font-bold text-[11px] transition-colors cursor-pointer"
+        >
+          <WifiOff className="w-3 h-3 text-emerald-400" />
+          <span>Cài Ứng Dụng PWA (Dùng Offline)</span>
+        </button>
       </div>
 
       {/* Header element */}
@@ -54,6 +68,9 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
             <a href="#features" className="hover:text-emerald-400 transition-colors">Tính năng</a>
+            <a href="#pwa-offline" className="hover:text-emerald-400 transition-colors text-emerald-400 font-bold flex items-center gap-1">
+              <WifiOff className="w-3.5 h-3.5" /> Offline PWA
+            </a>
             <a href="#workflow" className="hover:text-emerald-400 transition-colors">Quy trình</a>
             <a href="#pricing" className="hover:text-emerald-400 transition-colors">Bảng phí</a>
             <a href="#trust" className="hover:text-emerald-400 transition-colors font-medium">Cô chú tin dùng</a>
@@ -61,6 +78,15 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
           {/* Action Button */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPwaModal(true)}
+              className="hidden sm:flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-emerald-500/30 text-xs font-bold px-3 py-2 rounded-xl transition-all cursor-pointer"
+              title="Cài đặt ứng dụng PWA để dùng ngay cả khi không có mạng Internet"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cài App PWA</span>
+            </button>
+
             <button
               onClick={onEnterApp}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm px-4 py-2 rounded-xl transition-all shadow-md shadow-emerald-950 cursor-pointer flex items-center gap-1.5"
@@ -101,17 +127,20 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
                 Vào Sử Dụng Ngay (Miễn Phí)
                 <ChevronRight className="w-5 h-5" />
               </button>
-              <a
-                href="#features"
-                className="text-slate-300 hover:text-emerald-400 text-sm font-semibold border border-slate-850 hover:bg-slate-900 py-3 px-6 rounded-xl text-center transition-all"
+              
+              <button
+                type="button"
+                onClick={() => setShowPwaModal(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/40 text-sm font-bold py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
               >
-                Xem tính năng chính
-              </a>
+                <Download className="w-4 h-4 text-emerald-400" />
+                <span>Cài Ứng Dụng (Dùng Offline)</span>
+              </button>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-6 pt-4 text-xs text-slate-400">
               <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                <Check className="w-4 h-4 text-emerald-400" /> Không cần cài đặt (mở trên điện thoại/máy tính là chạy)
+                <Check className="w-4 h-4 text-emerald-400" /> Cài đặt ứng dụng PWA sử dụng ngay cả khi mất mạng 4G/Wifi
               </div>
               <div className="flex items-center gap-1.5 justify-center sm:justify-start">
                 <Check className="w-4 h-4 text-emerald-400" /> Miễn phí trọn đời cho 50 người dân đầu tiên
@@ -178,6 +207,37 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* Offline PWA Highlight Banner */}
+      <section id="pwa-offline" className="py-12 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border-y border-emerald-500/30 px-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+          <div className="md:col-span-8 space-y-3 text-left">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/40">
+              <WifiOff className="w-4 h-4 text-emerald-400" />
+              <span>CÔNG NGHỆ PWA PROGRESSIVE WEB APP 2026</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Sử Dụng Sổ Thu Ngay Cả Khi Mất Mạng, Không Có Wifi/4G
+            </h2>
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-2xl">
+              Cài đặt ứng dụng trực tiếp lên màn hình chính (Home Screen) của điện thoại Android, iPhone, iPad hoặc máy tính. Dữ liệu Sổ Thu được lưu trữ cục bộ cực kỳ an toàn, cho phép nhân viên thu tra cứu người dân, tính tiền đóng BHYT và làm việc mượt mà dù đang ở vùng sâu vùng xa không có sóng mạng.
+            </p>
+          </div>
+          <div className="md:col-span-4 flex flex-col sm:flex-row md:flex-col items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPwaModal(true)}
+              className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-xl shadow-emerald-950/80 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Download className="w-5 h-5" />
+              <span>Cài Đặt PWA Vào Máy</span>
+            </button>
+            <span className="text-[11px] text-slate-400 text-center">
+              Chỉ mất 2 giây • Tương thích iOS, Android & Windows
+            </span>
+          </div>
         </div>
       </section>
 

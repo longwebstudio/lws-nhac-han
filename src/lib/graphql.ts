@@ -222,142 +222,325 @@ export async function registerToWordPress(username: string, email: string, passw
 }
 
 /**
- * Upload backup payload to WordPress private posts
- * This wraps the customer database and settings and stores it safely on the web server.
+ * Upload backup payload (customers and agency settings) directly to WordPress custom table wp_lws_so_thu via WPGraphQL
  */
 export async function saveBackupToWordPress(payload: { customers: any[]; settings: any }) {
-  const serialized = JSON.stringify(payload);
-  const title = "Lws Nhắc Hạn Cloud Backup";
-  const currentUser = getStoredWPUser();
-  const authorId = currentUser ? currentUser.databaseId : undefined;
+  const customersJson = JSON.stringify(payload.customers || []);
+  const settingsJson = JSON.stringify(payload.settings || {});
 
-  // First, search if a backup post already exists
-  const searchQuery = `
-    query FindBackupPosts($authorId: Int) {
-      posts(where: { status: PRIVATE, author: $authorId }) {
-        nodes {
-          id
-          title
-          content
-          author {
-            node {
-              databaseId
-              username
-            }
-          }
-        }
+  const customTableMutation = `
+    mutation SaveLwsSoThuBackup($customersJson: String!, $settingsJson: String!) {
+      saveLwsSoThuBackup(input: {
+        customersJson: $customersJson,
+        settingsJson: $settingsJson
+      }) {
+        success
+        message
+        updatedAt
       }
     }
   `;
 
-  let existingPostId: string | null = null;
   try {
-    const listData = await runWPGraphQLQuery(searchQuery, authorId !== undefined ? { authorId } : {});
-    const existingNode = listData?.posts?.nodes?.find((node: any) => {
-      const matchesTitle = node.title === title;
-      const matchesAuthor = currentUser ? (node.author?.node?.databaseId === currentUser.databaseId) : true;
-      return matchesTitle && matchesAuthor;
-    });
-    if (existingNode) {
-      existingPostId = existingNode.id;
+    const customResult = await runWPGraphQLQuery(customTableMutation, { customersJson, settingsJson });
+    if (customResult?.saveLwsSoThuBackup?.success) {
+      console.log('Successfully saved online customer data & agency settings to WordPress custom table wp_lws_so_thu via WPGraphQL!');
+      return { success: true, updatedAt: customResult.saveLwsSoThuBackup.updatedAt };
     }
-  } catch (err) {
-    console.warn("Could not find existing backup node, creating new...", err);
+  } catch (err: any) {
+    console.warn('Primary mutation saveLwsSoThuBackup failed:', err);
+    
+    // Fallback to legacy mutation name
+    try {
+      const legacyMutation = `
+        mutation SaveLwsCustomTableBackup($customersJson: String!, $settingsJson: String!) {
+          saveLwsCustomTableBackup(input: {
+            customersJson: $customersJson,
+            settingsJson: $settingsJson
+          }) {
+            success
+            message
+            updatedAt
+          }
+        }
+      `;
+      const legacyResult = await runWPGraphQLQuery(legacyMutation, { customersJson, settingsJson });
+      if (legacyResult?.saveLwsCustomTableBackup?.success) {
+        console.log('Successfully saved online data via legacy WPGraphQL mutation!');
+        return { success: true, updatedAt: legacyResult.saveLwsCustomTableBackup.updatedAt };
+      }
+    } catch (legacyErr: any) {
+      console.warn('Legacy mutation saveLwsCustomTableBackup failed:', legacyErr);
+      const msg = legacyErr?.message || err?.message || '';
+      if (msg.includes('customersJson') || msg.includes('SaveLwsCustomTableBackupInput') || msg.includes('SaveLwsSoThuBackupInput')) {
+        throw new Error('Plugin WordPress chưa khai báo trường customersJson trong WPGraphQL. Vui lòng tải lại mã Nguồn Plugin LWS Sổ Thu (lws-so-thu.php v1.2.0) trong mục "Cấu hình WPGraphQL"!');
+      }
+      throw new Error(`Lỗi đồng bộ WordPress: ${msg}`);
+    }
   }
 
-  if (existingPostId) {
-    // Update existing
-    const updateMutation = `
-      mutation UpdateBackupPost($id: ID!, $content: String!) {
-        updatePost(input: {
-          id: $id,
-          content: $content
-        }) {
-          post {
-            id
-            title
-          }
-        }
-      }
-    `;
-    await runWPGraphQLQuery(updateMutation, { id: existingPostId, content: serialized });
-  } else {
-    // Create new private post
-    const createMutation = `
-      mutation CreateBackupPost($title: String!, $content: String!) {
-        createPost(input: {
-          title: $title,
-          content: $content,
-          status: PRIVATE
-        }) {
-          post {
-            id
-            title
-          }
-        }
-      }
-    `;
-    await runWPGraphQLQuery(createMutation, { title, content: serialized });
-  }
+  throw new Error('Không thể lưu dữ liệu vào bảng riêng wp_lws_so_thu trên WordPress. Vui lòng cài đặt Plugin lws-so-thu.');
 }
 
 /**
- * Fetch backup payload from WordPress private posts
+ * Fetch backup payload (customers and agency settings) directly from WordPress custom table wp_lws_so_thu via WPGraphQL
  */
-export async function getBackupFromWordPress(): Promise<{ customers: any[]; settings: any } | null> {
-  const title = "Lws Nhắc Hạn Cloud Backup";
-  const currentUser = getStoredWPUser();
-  const authorId = currentUser ? currentUser.databaseId : undefined;
-
-  const searchQuery = `
-    query FetchBackupPosts($authorId: Int) {
-      posts(where: { status: PRIVATE, author: $authorId }) {
-        nodes {
-          id
-          title
-          content
-          author {
-            node {
-              databaseId
-              username
-            }
-          }
-        }
+export async function getBackupFromWordPress(): Promise<{ 
+  customers: any[]; 
+  settings: any; 
+  updatedAt: string; 
+  agentName?: string; 
+  agentPhone?: string; 
+} | null> {
+  const customTableQuery = `
+    query GetLwsSoThuBackup {
+      lwsSoThuBackup {
+        userId
+        agentName
+        agentPhone
+        customersJson
+        settingsJson
+        updatedAt
       }
     }
   `;
 
-  const data = await runWPGraphQLQuery(searchQuery, authorId !== undefined ? { authorId } : {});
-  const node = data?.posts?.nodes?.find((node: any) => {
-    const matchesTitle = node.title === title;
-    const matchesAuthor = currentUser ? (node.author?.node?.databaseId === currentUser.databaseId) : true;
-    return matchesTitle && matchesAuthor;
-  });
+  let backupObj: any = null;
+  try {
+    const customData = await runWPGraphQLQuery(customTableQuery, {});
+    backupObj = customData?.lwsSoThuBackup;
+  } catch (e) {
+    const legacyQuery = `
+      query GetLwsCustomTableBackup {
+        lwsCustomTableBackup {
+          userId
+          agentName
+          agentPhone
+          customersJson
+          settingsJson
+          updatedAt
+        }
+      }
+    `;
+    const legacyData = await runWPGraphQLQuery(legacyQuery, {});
+    backupObj = legacyData?.lwsCustomTableBackup;
+  }
 
-  if (!node || !node.content) {
+  if (!backupObj) {
     return null;
   }
 
-  // Strip WordPress HTML paragraph wrapping if WordPress parsed it
-  let contentText = node.content.trim();
-  if (contentText.startsWith('<p>') && contentText.endsWith('</p>')) {
-    contentText = contentText.slice(3, -4);
-  }
-  // Decode HTML entities if WordPress encoded quotes
-  contentText = contentText
-    .replace(/&#8220;/g, '"')
-    .replace(/&#8221;/g, '"')
-    .replace(/&#8243;/g, '"')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
+  let custs: any[] = [];
+  let sets: any = {};
 
-  try {
-    return JSON.parse(contentText);
-  } catch (err) {
-    console.error("Failed to parse serialized backup content from WordPress:", err);
-    throw new Error("Dữ liệu sao lưu trên WordPress không đúng định dạng JSON. Vui lòng tải lên thủ công.");
+  if (backupObj.customersJson) {
+    try {
+      custs = JSON.parse(backupObj.customersJson);
+    } catch (e) {
+      console.warn('Could not parse customersJson from custom table:', e);
+    }
   }
+
+  if (backupObj.settingsJson) {
+    try {
+      sets = JSON.parse(backupObj.settingsJson);
+    } catch (e) {
+      console.warn('Could not parse settingsJson from custom table:', e);
+    }
+  }
+
+  if (Array.isArray(custs)) {
+    console.log('Successfully restored online customer data & agency settings from WordPress custom table wp_lws_so_thu via WPGraphQL!');
+    return { 
+      customers: custs, 
+      settings: sets,
+      updatedAt: backupObj.updatedAt || '',
+      agentName: backupObj.agentName || '',
+      agentPhone: backupObj.agentPhone || ''
+    };
+  }
+
+  return null;
 }
+
+export const WORDPRESS_SQL_CODE = `
+-- 1. Script SQL khởi tạo bảng riêng wp_lws_so_thu trong MySQL WordPress (Mỗi User 1 Sổ Thu)
+CREATE TABLE IF NOT EXISTS \`wp_lws_so_thu\` (
+  \`id\` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  \`user_id\` bigint(20) UNSIGNED NOT NULL,
+  \`agent_name\` varchar(255) DEFAULT '',
+  \`agent_phone\` varchar(50) DEFAULT '',
+  \`customer_id\` varchar(100) NOT NULL,
+  \`customer_name\` varchar(255) NOT NULL,
+  \`phone\` varchar(50) DEFAULT '',
+  \`cccd\` varchar(50) DEFAULT '',
+  \`data_json\` longtext NOT NULL,
+  \`settings_json\` longtext DEFAULT NULL,
+  \`updated_at\` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`user_id\` (\`user_id\`),
+  KEY \`customer_id\` (\`customer_id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`.trim();
+
+export const WORDPRESS_PHP_CUSTOM_TABLE_CODE = `
+<?php
+/**
+ * Plugin Name: LWS Sổ Thu (lws-so-thu) - Custom Table & WPGraphQL Integration
+ * Plugin URI: https://longwebstudio.net
+ * Description: Plugin LWS Sổ Thu tạo bảng riêng wp_lws_so_thu trong MySQL. Mỗi user sở hữu 1 sổ thu chứa danh sách khách hàng và cấu hình cá nhân, mở rộng API WPGraphQL giúp khôi phục dữ liệu trên thiết bị mới dễ dàng.
+ * Author: Freelancer Long Web Studio
+ * Version: 1.2.0
+ */
+
+if (!defined('ABSPATH')) exit;
+
+// 1. Khởi tạo bảng riêng wp_lws_so_thu trong MySQL (Mỗi user 1 Sổ Thu)
+function lws_create_custom_tables() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'lws_so_thu';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) UNSIGNED NOT NULL,
+        agent_name varchar(255) DEFAULT '',
+        agent_phone varchar(50) DEFAULT '',
+        customer_id varchar(100) NOT NULL,
+        customer_name varchar(255) NOT NULL,
+        phone varchar(50) DEFAULT '',
+        cccd varchar(50) DEFAULT '',
+        data_json longtext NOT NULL,
+        settings_json longtext DEFAULT NULL,
+        updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY user_id (user_id),
+        KEY customer_id (customer_id)
+    ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+}
+register_activation_hook(__FILE__, 'lws_create_custom_tables');
+
+// 2. Đăng ký WPGraphQL Type, RootQuery và Mutation
+add_action('graphql_register_types', function() {
+    register_graphql_object_type('LwsSoThuBackup', [
+        'description' => 'LWS Sổ Thu Bảo Hiểm Custom Table Backup',
+        'fields' => [
+            'userId' => ['type' => 'Int'],
+            'agentName' => ['type' => 'String'],
+            'agentPhone' => ['type' => 'String'],
+            'customersJson' => ['type' => 'String'],
+            'settingsJson' => ['type' => 'String'],
+            'updatedAt' => ['type' => 'String'],
+        ]
+    ]);
+
+    $resolver = function($root, $args, $context) {
+        $user_id = get_current_user_id();
+        if (!$user_id) return null;
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'lws_so_thu';
+        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE user_id = %d LIMIT 1", $user_id));
+
+        if (!$row) return null;
+
+        return [
+            'userId' => (int)$row->user_id,
+            'agentName' => isset($row->agent_name) ? $row->agent_name : '',
+            'agentPhone' => isset($row->agent_phone) ? $row->agent_phone : '',
+            'customersJson' => $row->data_json,
+            'settingsJson' => isset($row->settings_json) ? $row->settings_json : '',
+            'updatedAt' => $row->updated_at,
+        ];
+    };
+
+    register_graphql_field('RootQuery', 'lwsSoThuBackup', [
+        'type' => 'LwsSoThuBackup',
+        'description' => 'Lấy dữ liệu sổ thu của user từ bảng riêng wp_lws_so_thu',
+        'resolve' => $resolver
+    ]);
+
+    register_graphql_field('RootQuery', 'lwsCustomTableBackup', [
+        'type' => 'LwsSoThuBackup',
+        'description' => 'Alias lwsCustomTableBackup',
+        'resolve' => $resolver
+    ]);
+
+    $mutationHandler = function($input, $context) {
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            throw new \\GraphQL\\Error\\UserError('Bạn cần đăng nhập tài khoản WordPress để lưu dữ liệu sổ thu.');
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'lws_so_thu';
+        $customers_json = isset($input['customersJson']) ? $input['customersJson'] : '[]';
+        $settings_json = isset($input['settingsJson']) ? $input['settingsJson'] : '{}';
+        
+        $settings_obj = json_decode($settings_json, true);
+        $agent_name = (is_array($settings_obj) && isset($settings_obj['agencyName'])) ? $settings_obj['agencyName'] : '';
+        $agent_phone = (is_array($settings_obj) && isset($settings_obj['agentPhone'])) ? $settings_obj['agentPhone'] : '';
+        
+        $now = current_time('mysql');
+
+        $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table_name WHERE user_id = %d LIMIT 1", $user_id));
+
+        if ($existing) {
+            $wpdb->update(
+                $table_name,
+                [
+                    'agent_name' => $agent_name,
+                    'agent_phone' => $agent_phone,
+                    'data_json' => $customers_json,
+                    'settings_json' => $settings_json,
+                    'updated_at' => $now
+                ],
+                ['id' => $existing],
+                ['%s', '%s', '%s', '%s', '%s'],
+                ['%d']
+            );
+        } else {
+            $wpdb->insert(
+                $table_name,
+                [
+                    'user_id' => $user_id,
+                    'agent_name' => $agent_name,
+                    'agent_phone' => $agent_phone,
+                    'customer_id' => 'so_thu_' . $user_id,
+                    'customer_name' => ($agent_name ? $agent_name : 'LWS Agent') . ' (' . $user_id . ')',
+                    'data_json' => $customers_json,
+                    'settings_json' => $settings_json,
+                    'updated_at' => $now
+                ],
+                ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
+            );
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Lưu dữ liệu sổ thu (khách hàng & thông tin nhân viên thu) thành công vào bảng riêng wp_lws_so_thu!',
+            'updatedAt' => $now
+        ];
+    };
+
+    $mutationConfig = [
+        'inputFields' => [
+            'customersJson' => ['type' => 'String'],
+            'settingsJson' => ['type' => 'String'],
+        ],
+        'outputFields' => [
+            'success' => ['type' => 'Boolean'],
+            'message' => ['type' => 'String'],
+            'updatedAt' => ['type' => 'String'],
+        ],
+        'mutateAndGetPayload' => $mutationHandler
+    ];
+
+    register_graphql_mutation('saveLwsSoThuBackup', $mutationConfig);
+    register_graphql_mutation('saveLwsCustomTableBackup', $mutationConfig);
+});
+`.trim();
+

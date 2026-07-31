@@ -9,10 +9,11 @@ import {
   Users, Bell, Calendar, DollarSign, Search, Plus, 
   Settings, Download, Upload, RefreshCw, LogOut, Check, Copy, X,
   Cloud, AlertTriangle, UserCheck, Trash2, TrendingUp, BellRing, Sparkles, HelpCircle,
-  LayoutGrid, List, Share2, PhoneCall, Phone, HardDrive, Zap, ChevronDown
+  LayoutGrid, List, Share2, PhoneCall, Phone, HardDrive, Zap, ChevronDown, Clock, WifiOff, Smartphone
 } from 'lucide-react';
 import QuickGuideModal from './QuickGuideModal';
 import TermsModal from './TermsModal';
+import PWAInstallModal from './PWAInstallModal';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -96,6 +97,7 @@ interface DashboardProps {
   onGoBackLanding: () => void;
   onOpenSEOShare?: () => void;
   onOpenPricing?: () => void;
+  onCheckCloudVersion?: () => void;
 }
 
 export default function Dashboard({
@@ -120,7 +122,8 @@ export default function Dashboard({
   onResetDemoData,
   onGoBackLanding,
   onOpenSEOShare,
-  onOpenPricing
+  onOpenPricing,
+  onCheckCloudVersion
 }: DashboardProps) {
 
   // search, filters & view layout
@@ -136,6 +139,19 @@ export default function Dashboard({
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPwaModal, setShowPwaModal] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   const [activeReminderCust, setActiveReminderCust] = useState<Customer | null>(null);
   const [activeReminderChannel, setActiveReminderChannel] = useState<'Zalo' | 'SMS' | 'Call'>('Zalo');
   const [reminderInsType, setReminderInsType] = useState<'BHYT' | 'BHXH'>('BHYT');
@@ -869,7 +885,27 @@ export default function Dashboard({
                       </div>
                     </button>
 
-                    {/* 5. Hướng dẫn 3 bước */}
+                    {/* 5. Cài đặt Ứng Dụng PWA (Dùng Offline) */}
+                    <button
+                      onClick={() => {
+                        setIsSettingsMenuOpen(false);
+                        setShowPwaModal(true);
+                      }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                    >
+                      <div className="p-1.5 bg-emerald-950 border border-emerald-800 rounded-lg text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="block text-slate-200 group-hover:text-white flex items-center gap-1">
+                          Cài App PWA (Offline)
+                          <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px]">Hot</span>
+                        </span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Sử dụng ngay cả khi không có mạng</span>
+                      </div>
+                    </button>
+
+                    {/* 6. Hướng dẫn 3 bước */}
                     <button
                       onClick={() => {
                         setIsSettingsMenuOpen(false);
@@ -964,9 +1000,16 @@ export default function Dashboard({
               </div>
               
               {wpUser ? (
-                <p className="text-xs text-slate-300">
-                  Đã đăng nhập WordPress: <strong className="text-white font-mono">{wpUser.username}</strong> | Email: <span className="font-mono text-slate-400">{wpUser.email}</span>
-                </p>
+                <div className="space-y-0.5">
+                  <p className="text-xs text-slate-300">
+                    Đã đăng nhập WordPress: <strong className="text-white font-mono">{wpUser.username}</strong> | Email: <span className="font-mono text-slate-400">{wpUser.email}</span>
+                  </p>
+                  {settings.lastSyncedVersion && (
+                    <p className="text-[11px] text-emerald-400 font-mono">
+                      📌 Phiên bản đồng bộ gần nhất: <span className="font-bold">{settings.lastSyncedVersion}</span>
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="text-xs text-slate-400">
                   Bạn đang lưu trữ dữ liệu cục bộ trên Trình duyệt. Hãy kết nối WordPress GraphQL để nâng cấp đồng bộ đám mây vĩnh viễn.
@@ -978,6 +1021,18 @@ export default function Dashboard({
           <div className="flex items-center gap-2 flex-wrap">
             {wpUser ? (
               <>
+                {onCheckCloudVersion && (
+                  <button
+                    type="button"
+                    onClick={onCheckCloudVersion}
+                    disabled={isSyncing}
+                    className="px-3 py-2 text-xs font-semibold text-sky-300 bg-sky-950/60 hover:bg-sky-900/80 border border-sky-800 rounded-xl transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    title="So sánh phiên bản Sổ Thu hiện tại với phiên bản mới nhất trên WordPress Cloud"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-sky-400" />
+                    <span>So Sánh Version</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onSyncWP}
@@ -2556,6 +2611,11 @@ export default function Dashboard({
       <TermsModal
         isOpen={showTermsModal}
         onClose={() => setShowTermsModal(false)}
+      />
+
+      <PWAInstallModal
+        isOpen={showPwaModal}
+        onClose={() => setShowPwaModal(false)}
       />
     </div>
   );

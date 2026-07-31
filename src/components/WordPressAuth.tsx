@@ -160,6 +160,10 @@ export default function WordPressAuth({ onSuccess, onBypass }: WordPressAuthProp
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">LWS - Sổ thu bảo hiểm</h2>
           <p className="text-xs text-slate-300 mt-1">Dành Cho Nhân Viên Thu BHXH & BHYT</p>
+          <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-[10px] font-mono font-semibold text-emerald-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Hỗ trợ WPGraphQL & Bảng riêng wp_lws_so_thu</span>
+          </div>
         </div>
 
         <div className="p-6 space-y-5">

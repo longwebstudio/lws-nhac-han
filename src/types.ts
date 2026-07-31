@@ -42,6 +42,8 @@ export interface Customer {
   birthday?: string; // Ngày sinh YYYY-MM-DD
   gender?: 'Nam' | 'Nữ'; // Giới tính
   address?: string; // Địa chỉ
+  nhanVienThuName?: string; // Tên nhân viên thu/đại lý phụ trách
+  nhanVienThuPhone?: string; // Số điện thoại nhân viên thu/đại lý phụ trách
 }
 
 export interface BHYTCommissionRules {
@@ -79,4 +81,6 @@ export interface UserSettings {
   supportOtherBHXH?: number; // Mức hỗ trợ đối tượng khác (đ/tháng) - 132.000đ
   autoBackupWordPress?: boolean; // Tự động sao lưu lên WordPress hàng ngày
   lastAutoBackupDate?: string; // Ngày cuối cùng đã tự động sao lưu (YYYY-MM-DD)
+  lastSyncedVersion?: string; // Thời điểm/Phiên bản Sổ Thu đã đồng bộ với Cloud
+  lastLocalUpdate?: string; // Thời điểm chỉnh sửa dữ liệu Sổ Thu cục bộ gần nhất
 }

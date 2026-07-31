@@ -46,7 +46,21 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('[LWS PWA] Service Worker registered successfully with scope:', reg.scope);
+          }).catch((err) => {
+            console.warn('[LWS PWA] Service Worker registration failed:', err);
+          });
+        });
+      }
+    </script>
 
     <!-- Structured Data (JSON-LD) for Google Search Rich Snippets -->
     <script type="application/ld+json">
