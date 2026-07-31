@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Customer, InsuranceType } from '../types';
 import { X, FileText, Upload, Copy, AlertCircle, CheckCircle, Database, Download } from 'lucide-react';
 import { getAutoCommissionRate } from '../lib/commission';
+import { parseJsonToCustomers } from '../lib/jsonParser';
 
 interface ImportExcelModalProps {
   onImport: (newCustomers: Customer[]) => void;
@@ -108,149 +109,11 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
           } catch {}
         }
 
-        const list: any[] = [];
-        const firstItem = items[0];
-        const isReceiptFormat = firstItem && (firstItem.bienLaiId !== undefined || firstItem.mathuTuc !== undefined || firstItem.ngayLap !== undefined);
-
-        if (isReceiptFormat) {
-          // RECEIPT FORMAT PARSING
-          items.forEach((item: any, index: number) => {
-            const name = item.hoTen || item.hoVaTen || '';
-            if (!name) return;
-
-            // Bỏ lọc trạng thái theo yêu cầu của người dùng để nạp tất cả mọi trạng thái làm dữ liệu ghi nhận
-            const isBHYT = Number(item.mathuTuc) === 1 || 
-                           String(item.tenThuTuc || '').includes('603') || 
-                           String(item.tenThuTuc || '').toLowerCase().includes('bhyt') || 
-                           String(item.tenThuTuc || '').toLowerCase().includes('y tế') ||
-                           !(String(item.tenThuTuc || '').toLowerCase().includes('bhxh') || String(item.tenThuTuc || '').toLowerCase().includes('xã hội'));
-            
-            const codeValue = (item.maSoBHXH || '').trim().replace(/\s/g, '');
-            const cccd = (item.cmnd || item.cccd || '').trim();
-            
-            // extract ngayLap as payment date
-            const paymentDateVal = item.ngayLap ? String(item.ngayLap).substring(0, 10) : new Date().toISOString().split('T')[0];
-            
-            // Chỉ import thông tin người dân, bỏ ghi nhận lịch sử giao dịch vì không tính chính xác được hoa hồng từ biên nhận lịch sử
-            const collectionNote = item.nguoiNop ? `Người nộp cũ: ${item.nguoiNop}` : '';
-
-            // Parse additional fields: gender, address, birthday
-            const genderRaw = item.gioiTinh || item.gender || item.gt || '';
-            let finalGender: 'Nam' | 'Nữ' | undefined = undefined;
-            if (genderRaw) {
-              const gLower = String(genderRaw).toLowerCase();
-              if (gLower === 'nam' || gLower === 'm' || gLower === '1') {
-                finalGender = 'Nam';
-              } else if (gLower === 'nữ' || gLower === 'nu' || gLower === 'f' || gLower === '0' || gLower === 'nư') {
-                finalGender = 'Nữ';
-              }
-            }
-
-            const rawAddress = item.diaChi || item.address || item.thuongTru || item.noiO || '';
-            const birthdayRaw = item.ngaySinh || item.birthday || item.ngSinh || '';
-            const formattedBirthday = birthdayRaw ? formatBirthdayToYYYYMMDD(birthdayRaw) : undefined;
-
-            list.push({
-              id: `temp-receipt-${Date.now()}-${index}`,
-              name,
-              phone: item.soDienThoai || item.sdt || item.phone || '',
-              cccd,
-              insuranceCode: isBHYT ? codeValue : codeValue, // Set both to the 10-digit code to allow search matches
-              type: isBHYT ? 'BHYT' : 'BHXH',
-              hasBHXH: !isBHYT,
-              insuranceCodeBHXH: codeValue, // maSoBHXH is 10-digit code of the resident
-              expiryDate: '',
-              expiryDateBHXH: undefined,
-              createdAt: paymentDateVal,
-              notes: rawAddress ? rawAddress : (collectionNote || 'Đồng bộ từ file thông tin người dân'),
-              status: 'active',
-              paymentHistory: [], // Bỏ ghi nhận lịch sử đóng tiền từ file import
-              birthday: formattedBirthday || undefined,
-              gender: finalGender,
-              address: rawAddress || undefined
-            });
-          });
-
-          setParsedCustomers(list);
-          if (list.length === 0) {
-            setErrorMessage('Không nhận diện được biên lai nào từ dữ liệu JSON.');
-          } else {
-            setErrorMessage('');
-          }
-          return;
-        }
-
-        // ORIGINAL CUSTOMER LIST FORMAT PARSING
-        items.forEach((item: any, index: number) => {
-          const name = item.hoVaTen || item.name || '';
-          if (!name) return;
-
-          const phone = item.soDienThoai || item.phone || '';
-          const cccd = item.cccd || '';
-          const codeValue = item.maSoBHXH || item.insuranceCode || '';
-          const ngayDenHan = item.ngayDenHan || item.ngayDenHanStr || item.expiryDate || '';
-          const rawDateStr = String(ngayDenHan).trim();
-
-          // Check if "ngayDenHan" is present and determine type
-          let isBHYT = true; // default to BHYT
-          const itemTypeStr = String(item.type || item.loaiHinh || item.loaiBaoHiem || item.tenThuTuc || '').toLowerCase();
-          if (itemTypeStr.includes('bhxh') || itemTypeStr.includes('xã hội')) {
-            isBHYT = false;
-          } else if (itemTypeStr.includes('bhyt') || itemTypeStr.includes('y tế')) {
-            isBHYT = true;
-          } else if (rawDateStr) {
-            const parts = rawDateStr.split('/');
-            if (parts.length === 2) {
-              isBHYT = false; // mm/yyyy format -> BHXH
-            } else if (parts.length === 3) {
-              isBHYT = true; // dd/mm/yyyy format -> BHYT
-            }
-          }
-
-          let parsedDate = '';
-          if (rawDateStr) {
-            const parts = rawDateStr.split('/');
-            if (parts.length === 3) {
-              const day = parts[0].padStart(2, '0');
-              const month = parts[1].padStart(2, '0');
-              const year = parts[2];
-              parsedDate = `${year}-${month}-${day}`;
-            } else if (parts.length === 2) {
-              const month = parseInt(parts[0], 10);
-              const year = parseInt(parts[1], 10);
-              if (!isNaN(month) && !isNaN(year)) {
-                // Get the last day of the month
-                const lastDay = new Date(year, month, 0).getDate();
-                parsedDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-              }
-            } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawDateStr)) {
-              parsedDate = rawDateStr;
-            }
-          }
-
-          const notes = item.diaChi || item.notes || 'Nhập từ file JSON';
-
-          list.push({
-            id: `temp-json-${Date.now()}-${index}`,
-            name,
-            phone,
-            cccd,
-            insuranceCode: codeValue,
-            type: isBHYT ? 'BHYT' : 'BHXH',
-            hasBHXH: !isBHYT,
-            insuranceCodeBHXH: !isBHYT ? codeValue : undefined,
-            expiryDate: isBHYT ? parsedDate : '',
-            expiryDateBHXH: !isBHYT ? parsedDate : undefined,
-            createdAt: new Date().toISOString().split('T')[0],
-            notes,
-            status: 'active',
-            paymentHistory: []
-          });
-        });
+        const list = parseJsonToCustomers(items, bhxhRate, bhytRate);
 
         setParsedCustomers(list);
         if (list.length === 0) {
-          setErrorMessage('Không nhận diện được khách hàng nào từ dữ liệu JSON.');
+          setErrorMessage('Không tìm thấy danh sách khách hàng hợp lệ trong dữ liệu JSON.');
         } else {
           setErrorMessage('');
         }

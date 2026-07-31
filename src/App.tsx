@@ -25,6 +25,8 @@ import SEOShareModal from './components/SEOShareModal';
 import PricingModal from './components/PricingModal';
 
 import { getAutoCommissionRate } from './lib/commission';
+import { parseJsonToCustomers } from './lib/jsonParser';
+import { INITIAL_PVI_JSON } from './data/initialData';
 
 const normalizeDateParam = (val: string | null): string => {
   if (!val) return '';
@@ -186,16 +188,17 @@ export default function App() {
     try {
       let loadedCustomers: Customer[] = [];
       const storedCustomers = localStorage.getItem('lws_customers');
-      if (storedCustomers) {
+      if (storedCustomers !== null) {
         const parsed: Customer[] = JSON.parse(storedCustomers);
         // Filter out sample customer records if present from previous sessions
         loadedCustomers = parsed.filter((c: Customer) => !['cust-1', 'cust-2', 'cust-3', 'cust-4', 'cust-5', 'cust-6'].includes(c.id));
-        setCustomers(loadedCustomers);
-        localStorage.setItem('lws_customers', JSON.stringify(loadedCustomers));
       } else {
-        setCustomers([]);
-        localStorage.setItem('lws_customers', JSON.stringify([]));
+        // Seed with PVI customers ONLY if first time ever (storedCustomers is null)
+        loadedCustomers = parseJsonToCustomers(INITIAL_PVI_JSON);
       }
+
+      setCustomers(loadedCustomers);
+      localStorage.setItem('lws_customers', JSON.stringify(loadedCustomers));
 
       // Check URL query parameters to add customer via URL (e.g. ?name=...&phone=...&code=...&expiryDate=...)
       try {
@@ -596,6 +599,10 @@ export default function App() {
     setSettings(INITIAL_SETTINGS);
     localStorage.setItem('lws_customers', JSON.stringify([]));
     localStorage.setItem('lws_settings', JSON.stringify(INITIAL_SETTINGS));
+    setSyncStatus({
+      type: 'success',
+      message: '🗑️ Đã xóa toàn bộ dữ liệu danh sách người dân trên thiết bị về danh sách trống thành công!'
+    });
   };
 
   const handleLogoutWP = () => {
