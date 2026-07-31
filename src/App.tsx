@@ -66,16 +66,16 @@ export default function App() {
   useEffect(() => {
     if (view === 'landing') {
       updateSEOTags({
-        title: 'LWS Sổ Thu Bảo Hiểm - Phần Mềm Quản Lý BHYT & BHXH Cho Nhân Viên Thu',
-        description: 'Sổ thu công nghệ chuyên nghiệp dành cho Nhân viên thu BHXH, BHYT. Tự động tính định mức BHYT hộ gia đình (lương cơ sở 2.530.000đ), nhắc đáo hạn Zalo/SMS 3 giây, quản lý danh sách không giới hạn.',
+        title: 'LWS Sổ Thu Bảo Hiểm Online - Ứng Dụng Miễn Phí Nhắc Hạn BHYT & BHXH | Long Web Studio',
+        description: 'Sổ thu bảo hiểm online tiện lợi dành cho Nhân viên thu BHXH, BHYT. Tự động tính định mức BHYT hộ gia đình (lương cơ sở 2.530.000đ), gửi tin nhắn Zalo/SMS nhắc đáo hạn 3 giây.',
         ogUrl: 'https://app.longwebstudio.io.vn/',
         canonicalUrl: 'https://app.longwebstudio.io.vn/',
       });
     } else {
       const agency = settings.agencyName || 'Đại Lý Thu BHXH, BHYT';
       updateSEOTags({
-        title: `LWS Sổ Thu Bảo Hiểm - ${agency}`,
-        description: `Sổ thu điện tử quản lý ${customers.length} người dân đóng BHYT Hộ gia đình và BHXH Tự nguyện tại ${agency}. Tự động tạo tin nhắn Zalo nhắc hạn, tính định mức hỗ trợ chính xác.`,
+        title: `LWS Sổ Thu Bảo Hiểm Online - ${agency}`,
+        description: `Sổ thu bảo hiểm online quản lý ${customers.length} người dân đóng BHYT Hộ gia đình và BHXH Tự nguyện tại ${agency}. Tự động tạo tin nhắn Zalo nhắc hạn, tính định mức hỗ trợ chính xác.`,
         ogUrl: 'https://app.longwebstudio.io.vn/#dashboard',
         canonicalUrl: 'https://app.longwebstudio.io.vn/',
       });

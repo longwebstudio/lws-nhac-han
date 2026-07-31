@@ -6,7 +6,16 @@
 import { Customer, UserSettings } from './types';
 import { DEFAULT_COMMISSION_MATRIX } from './lib/commission';
 
-// Anchor date: 2026-06-12
+// Helper to calculate relative date string YYYY-MM-DD relative to today
+export const getRelativeDateStr = (offsetDays: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const INITIAL_SETTINGS: UserSettings = {
   agencyName: 'Lỗ Văn Long',
   agentPhone: '0374638603',
@@ -33,8 +42,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     insuranceCode: 'DK9721389211',
     hasBHYT: true,
     hasBHXH: false,
-    expiryDate: '2026-06-15', // Expires in 3 days (relative to 2026-06-12)
-    createdAt: '2025-06-15',
+    expiryDate: getRelativeDateStr(3), // Expires in 3 days relative to today
+    createdAt: getRelativeDateStr(-362),
     notes: 'Khách hàng đóng tiền qua chuyển khoản thường kỳ. Có bệnh nền cần bảo hiểm liên tục.',
     status: 'active',
     birthday: '1975-04-12',
@@ -43,7 +52,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     paymentHistory: [
       {
         id: 'pay-1-1',
-        paymentDate: '2025-06-15',
+        paymentDate: getRelativeDateStr(-362),
         amountPaid: 972000,
         periodMonths: 12,
         commissionRate: 3.02,
@@ -61,8 +70,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     insuranceCode: 'GD0192849102',
     hasBHYT: true,
     hasBHXH: false,
-    expiryDate: '2026-06-19', // Expires in 7 days (relative to 2026-06-12)
-    createdAt: '2025-12-19',
+    expiryDate: getRelativeDateStr(7), // Expires in 7 days relative to today
+    createdAt: getRelativeDateStr(-173),
     notes: 'Liên hệ qua con gái tên Hương để đóng tiền.',
     status: 'active',
     birthday: '1982-11-23',
@@ -71,7 +80,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     paymentHistory: [
       {
         id: 'pay-2-1',
-        paymentDate: '2025-12-19',
+        paymentDate: getRelativeDateStr(-173),
         amountPaid: 486000,
         periodMonths: 6,
         commissionRate: 3.02,
@@ -90,9 +99,9 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     hasBHYT: true,
     hasBHXH: true,
     insuranceCodeBHXH: 'BH6091239841',
-    expiryDate: '2026-12-10', // Long term BHYT active
-    expiryDateBHXH: '2026-06-10', // BHXH expired 2 days ago (relative to 2026-06-12)
-    createdAt: '2025-06-10',
+    expiryDate: getRelativeDateStr(180), // Long term BHYT active
+    expiryDateBHXH: getRelativeDateStr(-2), // BHXH expired 2 days ago relative to today
+    createdAt: getRelativeDateStr(-365),
     notes: 'Tham gia BHXH tự nguyện mức thu nhập lựa chọn 3.000.000đ. Đóng song hành cả BHYT và BHXH.',
     status: 'active',
     birthday: '1989-08-05',
@@ -101,7 +110,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     paymentHistory: [
       {
         id: 'pay-3-1',
-        paymentDate: '2025-06-10',
+        paymentDate: getRelativeDateStr(-365),
         amountPaid: 7920000,
         periodMonths: 12,
         commissionRate: 14.40,
@@ -111,7 +120,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
       },
       {
         id: 'pay-3-2',
-        paymentDate: '2025-12-10',
+        paymentDate: getRelativeDateStr(-185),
         amountPaid: 972000,
         periodMonths: 12,
         commissionRate: 3.02,
@@ -131,8 +140,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     hasBHXH: true,
     insuranceCodeBHXH: '7912384910',
     expiryDate: '',
-    expiryDateBHXH: '2026-06-14', // BHXH sắp hết hạn trong 2 ngày
-    createdAt: '2025-06-14',
+    expiryDateBHXH: getRelativeDateStr(2), // BHXH sắp hết hạn trong 2 ngày
+    createdAt: getRelativeDateStr(-363),
     notes: 'Lao động tự do, chỉ tham gia đóng BHXH Tự Nguyện để tích lũy lương hưu (BHYT được hưởng theo diện hộ nghèo/thân nhân).',
     status: 'active',
     birthday: '1980-03-18',
@@ -141,7 +150,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     paymentHistory: [
       {
         id: 'pay-4-1',
-        paymentDate: '2025-06-14',
+        paymentDate: getRelativeDateStr(-363),
         amountPaid: 3960000,
         periodMonths: 12,
         commissionRate: 5.60,
@@ -159,8 +168,8 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     insuranceCode: 'GD3910248102',
     hasBHYT: true,
     hasBHXH: false,
-    expiryDate: '2026-09-30', // Long term active
-    createdAt: '2025-09-30',
+    expiryDate: getRelativeDateStr(110), // Long term active
+    createdAt: getRelativeDateStr(-255),
     notes: 'Khách hàng thân thiết của tổ xã.',
     status: 'active',
     birthday: '1995-02-14',
@@ -169,7 +178,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     paymentHistory: [
       {
         id: 'pay-5-1',
-        paymentDate: '2025-09-30',
+        paymentDate: getRelativeDateStr(-255),
         amountPaid: 972000,
         periodMonths: 12,
         commissionRate: 3.02,
@@ -188,9 +197,9 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     hasBHYT: true,
     hasBHXH: true,
     insuranceCodeBHXH: 'BH3910294102',
-    expiryDate: '2026-11-20', // BHYT active
-    expiryDateBHXH: '2026-06-25', // BHXH next 13 days
-    createdAt: '2025-06-25',
+    expiryDate: getRelativeDateStr(160), // BHYT active
+    expiryDateBHXH: getRelativeDateStr(13), // BHXH next 13 days
+    createdAt: getRelativeDateStr(-170),
     notes: 'Kinh doanh tạp hóa nhỏ tại nhà. Tham gia cả BHYT và BHXH tự nguyện.',
     status: 'active',
     birthday: '1968-06-30',

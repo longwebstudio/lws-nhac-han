@@ -469,7 +469,7 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
       insuranceCodeBHXH: p.insuranceCodeBHXH,
       expiryDateBHXH: p.expiryDateBHXH,
       expiryDate: p.expiryDate || '',
-      createdAt: p.createdAt || '2026-06-12',
+      createdAt: p.createdAt || new Date().toISOString().split('T')[0],
       notes: p.notes || '',
       status: 'active',
       paymentHistory: p.paymentHistory || [],

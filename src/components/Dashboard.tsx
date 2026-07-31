@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Customer, UserSettings } from '../types';
 import { 
   Users, Bell, Calendar, DollarSign, Search, Plus, 
@@ -207,17 +207,41 @@ export default function Dashboard({
   const [chartType, setChartType] = useState<'area' | 'bar'>('area');
   const [chartInsType, setChartInsType] = useState<'all' | 'BHYT' | 'BHXH'>('all');
 
-  // current anchor date: 2026-06-12
-  const ANCHOR_DATE = useMemo(() => new Date('2026-06-12'), []);
+  // Today's formatted date string (DD/MM/YYYY) for display
+  const todayFormatted = useMemo(() => {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    return `${day}/${month}/${year}`;
+  }, []);
 
-  // helper to calculate days difference relative to 2026-06-12
-  const getDaysDiff = (expiryStr: string) => {
+  // Helper to calculate days difference relative to current date (Hôm nay)
+  const getDaysDiff = useCallback((expiryStr: string) => {
     if (!expiryStr) return 99999;
-    const expDate = new Date(expiryStr);
-    if (isNaN(expDate.getTime())) return 99999;
-    const timeDiff = expDate.getTime() - ANCHOR_DATE.getTime();
-    return Math.ceil(timeDiff / (1000 * 3600 * 24));
-  };
+    
+    const parts = expiryStr.split('-');
+    let expYear: number, expMonth: number, expDay: number;
+    if (parts.length === 3) {
+      expYear = parseInt(parts[0], 10);
+      expMonth = parseInt(parts[1], 10) - 1;
+      expDay = parseInt(parts[2], 10);
+    } else {
+      const expDate = new Date(expiryStr);
+      if (isNaN(expDate.getTime())) return 99999;
+      expYear = expDate.getFullYear();
+      expMonth = expDate.getMonth();
+      expDay = expDate.getDate();
+    }
+
+    const expMidnight = new Date(expYear, expMonth, expDay);
+
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const timeDiff = expMidnight.getTime() - todayMidnight.getTime();
+    return Math.round(timeDiff / (1000 * 3600 * 24));
+  }, []);
 
   // derived statistics
   const stats = useMemo(() => {
@@ -473,7 +497,7 @@ export default function Dashboard({
     });
   }, [customers, searchQuery, filterType, filterStatus, filterPeriod, filterReminder, filterPayer, getDaysDiff]);
 
-  // Khách hàng cần đóng tiền bảo hiểm TRONG NGÀY HÔM NAY (relative to 2026-06-12)
+  // Khách hàng cần đóng tiền bảo hiểm TRONG NGÀY HÔM NAY (tính theo ngày thực tế)
   const todayCustomers = useMemo(() => {
     return customers.filter(cust => {
       if (cust.status !== 'active') return false;
@@ -687,9 +711,10 @@ export default function Dashboard({
   return (
     <div id="dashboard-root" className="bg-slate-950 min-h-screen text-slate-100 flex flex-col font-sans">
       
-      {/* Mini warning sticky anchor */}
-      <div className="bg-[#111126] text-slate-400 text-[10px] py-1.5 px-4 text-center font-bold font-mono tracking-wider border-b border-slate-900">
-        📅 THỜI GIAN THỬ NGHIỆM GIẢ LẬP: 12/06/2026 (Cột đếm ngược lấy mốc hôm nay làm gốc)
+      {/* Realtime Date Sticky Anchor */}
+      <div className="bg-[#111126] text-emerald-400 text-[10px] py-1.5 px-4 text-center font-bold font-mono tracking-wider border-b border-slate-900 flex items-center justify-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+        <span>📅 HÔM NAY: {todayFormatted} (Cột đếm ngược & nhắc hạn tự động lấy theo ngày hiện tại)</span>
       </div>
 
       {/* Modern Dashboard Header */}
@@ -1025,7 +1050,7 @@ export default function Dashboard({
                 <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap">
                   Thông báo Nhắc gia hạn Bảo hiểm
                   <span className="text-[10px] bg-slate-950 border border-slate-800 text-amber-400 px-2 py-0.5 rounded-full font-mono font-bold">
-                    Hôm nay: 12/06/2026
+                    Hôm nay: {todayFormatted}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">

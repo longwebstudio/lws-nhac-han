@@ -16,6 +16,8 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
   const [showQuickGuideModal, setShowQuickGuideModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
+  const todayFormatted = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
   return (
     <div id="landing-page" className="bg-slate-950 min-h-screen text-slate-100 flex flex-col font-sans">
       <QuickGuideModal 
@@ -31,7 +33,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
       
       {/* Top Notification Bar */}
       <div className="bg-emerald-950 text-emerald-300 text-xs py-2 px-4 text-center font-medium select-none">
-        🎉 Sổ thu công nghệ chuyên nghiệp dành cho nhân viên thu BHXH, BHYT từ <a href="https://longwebstudio.io.vn" target="_blank" rel="noreferrer" className="underline hover:text-white font-semibold">Freelancer Long Web Studio</a>
+        🎉 Sổ thu bảo hiểm Online tiện lợi & miễn phí dành cho nhân viên thu BHXH, BHYT từ <a href="https://longwebstudio.io.vn" target="_blank" rel="noreferrer" className="underline hover:text-white font-semibold">Freelancer Long Web Studio</a>
       </div>
 
       {/* Header element */}
@@ -44,8 +46,8 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
               <span className="font-extrabold text-base leading-none">LWS</span>
             </div>
             <div>
-              <span className="font-extrabold text-base tracking-tight text-white block">LWS - Sổ thu bảo hiểm</span>
-              <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-semibold block">Phần mềm cho nhân viên thu BHXH, BHYT</span>
+              <span className="font-extrabold text-base tracking-tight text-white block">LWS - Sổ thu bảo hiểm Online</span>
+              <span className="text-[9px] uppercase tracking-wider text-emerald-400 font-semibold block">Ứng dụng miễn phí cho nhân viên thu BHXH, BHYT</span>
             </div>
           </div>
 
@@ -124,7 +126,7 @@ export default function LandingPage({ onEnterApp }: LandingPageProps) {
 
               {/* Mock App Header */}
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <span className="text-xs font-bold text-slate-400 font-mono">📅 HÔM NAY: 12/06/2026</span>
+                <span className="text-xs font-bold text-slate-400 font-mono">📅 HÔM NAY: {todayFormatted}</span>
                 <span className="text-[10px] bg-amber-955 text-amber-300 border border-amber-900/40 font-bold px-2 py-0.5 rounded-full">
                   ⚠️ 3 Người sắp hết hạn
                 </span>

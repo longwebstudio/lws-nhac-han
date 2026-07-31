@@ -12,28 +12,88 @@ export default function SEOShareModal({ agencyName, customerCount = 0, onClose }
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPost, setCopiedPost] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [activeTab, setActiveTab] = useState<'zalo' | 'facebook' | 'google'>('zalo');
+  const [activeTab, setActiveTab] = useState<'zalo' | 'facebook' | 'google' | 'keywords'>('zalo');
+  const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
+
+  const keywordClusters = [
+    {
+      category: 'Thương Hiệu & Từ Khóa Online Trực Tiếp',
+      description: 'Từ khóa định danh giúp người dùng tìm kiếm trực tiếp ứng dụng sổ thu online & tác giả',
+      keywords: [
+        'Sổ thu bảo hiểm online',
+        'LWS Sổ Thu Bảo Hiểm Online',
+        'sổ thu BHYT online',
+        'sổ thu BHXH online',
+        'Freelancer Long Web Studio',
+        'Long Web Studio',
+        'app.longwebstudio.io.vn',
+        'LWS Nhắc Hạn Bảo Hiểm Online'
+      ]
+    },
+    {
+      category: 'Nghiệp Vụ Nhân Viên Thu & Điểm Thu Online',
+      description: 'Các cụm từ tìm kiếm phổ biến của Nhân viên thu, Đại lý thu BHXH & BHYT khi tìm giải pháp online',
+      keywords: [
+        'sổ thu bảo hiểm online miễn phí',
+        'phần mềm sổ thu BHYT online',
+        'sổ thu điện tử BHYT online',
+        'phần mềm nhân viên thu BHYT online',
+        'điểm thu BHXH BHYT online',
+        'quản lý người dân đóng BHYT online',
+        'quản lý BHXH tự nguyện online'
+      ]
+    },
+    {
+      category: 'Tính Năng & Nhắc Hạn Zalo/SMS Online',
+      description: 'Từ khóa tập trung vào giải pháp gửi tin nhắn nhắc hạn và tính định mức tự động online',
+      keywords: [
+        'nhắc hạn BHYT qua Zalo online',
+        'tạo tin nhắn nhắc hạn BHYT 3s',
+        'tính giảm trừ BHYT hộ gia đình 2.530.000đ',
+        'tính phí BHXH tự nguyện online',
+        'gửi Zalo nhắc đáo hạn bảo hiểm online',
+        'tra cứu thẻ BHYT hộ gia đình online'
+      ]
+    },
+    {
+      category: 'Tìm Kiếm Miễn Phí & Tiện Ích Trực Tuyến',
+      description: 'Cụm từ người dùng hay gõ khi tìm kiếm phần mềm quản lý sổ thu trực tuyến tiện lợi',
+      keywords: [
+        'phần mềm sổ thu bảo hiểm online tốt nhất',
+        'sổ thu bảo hiểm trực tuyến không tốn phí',
+        'sổ thu bảo hiểm chạy online và offline',
+        'phần mềm quản lý đại lý thu BHXH online',
+        'sao lưu sổ thu bảo hiểm cloud online'
+      ]
+    }
+  ];
+
+  const handleCopyKeyword = (kw: string) => {
+    navigator.clipboard.writeText(kw);
+    setCopiedKeyword(kw);
+    setTimeout(() => setCopiedKeyword(null), 2000);
+  };
 
   const appUrl = 'https://app.longwebstudio.io.vn/';
   const displayAgency = agencyName || 'Đại Lý Thu BHXH, BHYT';
 
-  const ogTitle = `LWS Sổ Thu Bảo Hiểm - ${displayAgency}`;
-  const ogDesc = `Sổ thu công nghệ chuyên nghiệp quản lý ${customerCount > 0 ? customerCount : 'hàng trăm'} người dân đóng BHYT Hộ gia đình & BHXH Tự nguyện. Tự động nhắc hạn Zalo 3s, tính giảm trừ chính xác!`;
+  const ogTitle = `LWS Sổ Thu Bảo Hiểm Online - Ứng Dụng Miễn Phí Nhắc Hạn BHYT & BHXH (${displayAgency})`;
+  const ogDesc = `Ứng dụng Sổ Thu Bảo Hiểm Online miễn phí từ Freelancer Long Web Studio giúp Nhân viên thu BHXH, BHYT quản lý danh sách người dân, tự động tính giảm trừ hộ gia đình và gửi tin nhắn Zalo nhắc đáo hạn chỉ 3 giây!`;
   const ogImage = DEFAULT_SEO.ogImage;
 
-  const zaloPostText = `🎉 SỔ THU BẢO HIỂM CÔNG NGHỆ BHYT & BHXH TỰ NGUYỆN
-👉 Dành riêng cho Nhân viên thu & Điểm thu BHXH, BHYT!
+  const zaloPostText = `🎉 SỔ THU BẢO HIỂM ONLINE - ỨNG DỤNG MIỄN PHÍ DÀNH CHO NHÂN VIÊN THU BHYT & BHXH
+👉 Phát triển bởi Freelancer Long Web Studio giúp nhân viên thu nhắc hạn người tham gia tiện lợi!
 
-✅ Quản lý danh sách người dân không giới hạn
-✅ Tự động tính định mức BHYT hộ gia đình (Lương cơ sở 2.530.000đ)
+✅ Hỗ trợ Nhân viên thu & Điểm thu BHYT, BHXH quản lý sổ thu online chuyên nghiệp
+✅ Tự động tính định mức giảm trừ BHYT hộ gia đình (Lương cơ sở 2.530.000đ)
 ✅ Tự động tính mức đóng BHXH tự nguyện (Hỗ trợ Nhà nước 132.000đ/tháng)
-✅ Tạo tin nhắn Zalo/SMS nhắc đáo hạn tự động trong 3 giây
-✅ Sao lưu dữ liệu WordPress Cloud an toàn tuyệt đối
+✅ Tạo tin nhắn Zalo/SMS nhắc đáo hạn tự động chuẩn chỉ trong 3 giây
+✅ Hoàn toàn MIỄN PHÍ - Sử dụng online mọi lúc hoặc offline không lo mất dữ liệu
 
 TRUY CẬP SỬ DỤNG MIỄN PHÍ NGAY TẠI:
 🌐 ${appUrl}
 
-Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
+Tác giả: Freelancer Long Web Studio (Zalo: 0966570913)`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(appUrl);
@@ -192,14 +252,14 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                 Xem Trước Thẻ OG (Open Graph Card Preview):
               </label>
-              <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 flex-wrap">
                 <button
                   onClick={() => setActiveTab('zalo')}
                   className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     activeTab === 'zalo' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  Zalo Share
+                  Zalo
                 </button>
                 <button
                   onClick={() => setActiveTab('facebook')}
@@ -207,7 +267,7 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
                     activeTab === 'facebook' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  Facebook / Messenger
+                  Facebook
                 </button>
                 <button
                   onClick={() => setActiveTab('google')}
@@ -215,7 +275,16 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
                     activeTab === 'google' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  Google Search
+                  Google
+                </button>
+                <button
+                  onClick={() => setActiveTab('keywords')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                    activeTab === 'keywords' ? 'bg-emerald-600 text-white shadow' : 'text-emerald-400 hover:text-emerald-300'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Gợi Ý Từ Khóa SEO</span>
                 </button>
               </div>
             </div>
@@ -294,6 +363,71 @@ Phát triển bởi Freelancer Long Web Studio (Zalo: 0966570913)`;
                   </div>
                   <h4 className="text-base font-medium text-blue-400 hover:underline cursor-pointer pt-1">{ogTitle}</h4>
                   <p className="text-xs text-slate-300 leading-relaxed pt-0.5">{ogDesc}</p>
+                </div>
+              </div>
+            )}
+
+            {/* SEO Keyword Suggestions Cluster */}
+            {activeTab === 'keywords' && (
+              <div className="bg-slate-950 p-4 rounded-2xl border border-emerald-900/60 space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between text-xs text-emerald-400 border-b border-slate-800 pb-2">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-emerald-400" /> Danh Sách Cụm Từ Khóa SEO Tối Ưu Cho Ứng Dụng LWS
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Nhấn vào từ khóa để sao chép</span>
+                </div>
+
+                <div className="space-y-3">
+                  {keywordClusters.map((cluster, idx) => (
+                    <div key={idx} className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2">
+                      <div>
+                        <h5 className="text-xs font-bold text-white flex items-center justify-between">
+                          <span>{cluster.category}</span>
+                          <button
+                            onClick={() => {
+                              const allKw = cluster.keywords.join(', ');
+                              navigator.clipboard.writeText(allKw);
+                              setCopiedKeyword(`cluster-${idx}`);
+                              setTimeout(() => setCopiedKeyword(null), 2000);
+                            }}
+                            className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
+                          >
+                            {copiedKeyword === `cluster-${idx}` ? (
+                              <>
+                                <Check className="w-3 h-3" /> Đã chép nhóm!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" /> Chép toàn bộ nhóm
+                              </>
+                            )}
+                          </button>
+                        </h5>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{cluster.description}</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {cluster.keywords.map((kw, kIdx) => (
+                          <button
+                            key={kIdx}
+                            onClick={() => handleCopyKeyword(kw)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                              copiedKeyword === kw
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-600 scale-105'
+                                : 'bg-slate-950 hover:bg-slate-850 text-slate-200 border-slate-800 hover:border-emerald-800/80'
+                            }`}
+                          >
+                            <span>{kw}</span>
+                            {copiedKeyword === kw ? (
+                              <Check className="w-3 h-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-slate-500 opacity-60 group-hover:opacity-100" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
