@@ -26,7 +26,6 @@ import PricingModal from './components/PricingModal';
 
 import { getAutoCommissionRate } from './lib/commission';
 import { parseJsonToCustomers } from './lib/jsonParser';
-import { INITIAL_PVI_JSON } from './data/initialData';
 
 const normalizeDateParam = (val: string | null): string => {
   if (!val) return '';
@@ -211,8 +210,7 @@ export default function App() {
         // Filter out sample customer records if present from previous sessions
         loadedCustomers = parsed.filter((c: Customer) => !['cust-1', 'cust-2', 'cust-3', 'cust-4', 'cust-5', 'cust-6'].includes(c.id));
       } else {
-        // Seed with PVI customers ONLY if first time ever (storedCustomers is null)
-        loadedCustomers = parseJsonToCustomers(INITIAL_PVI_JSON);
+        loadedCustomers = [];
       }
 
       setCustomers(loadedCustomers);
