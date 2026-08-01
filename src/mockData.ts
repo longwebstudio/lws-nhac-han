@@ -29,7 +29,7 @@ export const INITIAL_SETTINGS: UserSettings = {
   baseSalaryBHYT: 2530000,
   povertyStandardBHXH: 1500000,
   supportOtherBHXH: 132000,
-  autoBackupWordPress: true,
+  autoBackupWordPress: false,
   lastAutoBackupDate: ''
 };
 

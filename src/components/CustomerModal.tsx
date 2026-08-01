@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Customer, InsuranceType, PaymentHistory, UserSettings } from '../types';
-import { X, Save, Plus, Trash2, ShieldCheck, DollarSign, Calendar, Eye, FileText, Copy, Check, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Save, Plus, Trash2, ShieldCheck, DollarSign, Calendar, Eye, FileText, Copy, Check, Sparkles, RefreshCw, Edit3, ExternalLink } from 'lucide-react';
 import { getAutoCommissionRate } from '../lib/commission';
 
 interface CustomerModalProps {
@@ -65,6 +65,65 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
   const [deleteCustomerConfirm, setDeleteCustomerConfirm] = useState(false);
   const [deletePaymentConfirmId, setDeletePaymentConfirmId] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  // Inline payment amount editing & link helpers
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [editingAmountValue, setEditingAmountValue] = useState<string>('');
+
+  const handleSaveEditedAmount = (payId: string) => {
+    const newAmount = Number(editingAmountValue);
+    if (isNaN(newAmount) || newAmount < 0) {
+      setEditingPaymentId(null);
+      return;
+    }
+    setPaymentHistory(prev => prev.map(p => {
+      if (p.id === payId) {
+        const commRate = p.commissionRate ?? ((p.type || type) === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate);
+        const newComm = Math.round(newAmount * (commRate / 100));
+        return {
+          ...p,
+          amountPaid: newAmount,
+          commissionAmount: newComm
+        };
+      }
+      return p;
+    }));
+    setEditingPaymentId(null);
+  };
+
+  const extractUrl = (text?: string): string | null => {
+    if (!text) return null;
+    const match = text.match(/(https?:\/\/[^\s]+)/);
+    return match ? match[0] : null;
+  };
+
+  const renderTextWithLinks = (text?: string, customLinkClass?: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    if (parts.length === 1) return text;
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={customLinkClass || "text-sky-400 hover:text-sky-300 underline font-semibold transition-colors cursor-pointer inline-flex items-center gap-0.5 break-all"}
+            title={`Mở trang biên lai e-PVI: ${part}`}
+          >
+            <span>{part}</span>
+            <span className="text-[9px] no-underline">↗</span>
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   const getSuggestedPremium = () => {
     const months = parseInt(periodMonths) || 12;
@@ -979,74 +1038,147 @@ export default function CustomerModal({ customer, customers, settings, onSave, o
                     <p className="text-xs">Chưa có bản ghi thu tiền nào của người này.</p>
                   </div>
                 ) : (
-                  paymentHistory.map((pay) => (
-                    <div key={pay.id} className="bg-slate-950/80 border border-slate-850 hover:border-slate-750 rounded-lg p-2 transition-all text-slate-300 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0 flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-slate-500" />
-                            {pay.paymentDate}
-                          </span>
-                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border shrink-0 ${
-                            pay.category?.includes('Tăng mới')
-                              ? 'bg-amber-950/50 border-amber-800/60 text-amber-300'
-                              : (pay.type || type) === 'BHXH' 
-                              ? 'bg-indigo-950/50 border-indigo-900/60 text-indigo-300' 
-                              : 'bg-teal-950/50 border-teal-900/60 text-teal-300'
-                          }`}>
-                            {pay.category || ((pay.type || type) === 'BHXH' ? 'BHXH' : 'BHYT')} ({pay.periodMonths}th)
-                          </span>
-                          <span className="text-xs font-black text-white font-mono shrink-0">
-                            {(pay.amountPaid).toLocaleString()}đ
-                          </span>
-                        </div>
+                  paymentHistory.map((pay) => {
+                    const isEditingThisAmount = editingPaymentId === pay.id;
+                    const receiptUrl = extractUrl(pay.note);
 
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[11px] font-bold text-emerald-400 font-mono" title={`Tỷ lệ: ${pay.commissionRate ?? (pay.type === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate)}%`}>
-                            +{pay.commissionAmount.toLocaleString()}đ
-                          </span>
-                          {deletePaymentConfirmId === pay.id ? (
-                            <div className="flex items-center gap-1 bg-rose-950/80 border border-rose-800 rounded px-1 py-0.5 animate-fade-in">
+                    return (
+                      <div key={pay.id} className="bg-slate-950/80 border border-slate-850 hover:border-slate-750 rounded-lg p-2.5 transition-all text-slate-300 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="text-[10px] text-slate-400 font-mono shrink-0 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-500" />
+                              {pay.paymentDate}
+                            </span>
+                            <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border shrink-0 ${
+                              pay.category?.includes('Tăng mới')
+                                ? 'bg-amber-950/50 border-amber-800/60 text-amber-300'
+                                : (pay.type || type) === 'BHXH' 
+                                ? 'bg-indigo-950/50 border-indigo-900/60 text-indigo-300' 
+                                : 'bg-teal-950/50 border-teal-900/60 text-teal-300'
+                            }`}>
+                              {pay.category || ((pay.type || type) === 'BHXH' ? 'BHXH' : 'BHYT')} ({pay.periodMonths}th)
+                            </span>
+
+                            {/* Editable Payment Amount */}
+                            {isEditingThisAmount ? (
+                              <div className="flex items-center gap-1 bg-slate-900 p-0.5 border border-amber-500/80 rounded-md animate-fade-in">
+                                <input
+                                  type="number"
+                                  value={editingAmountValue}
+                                  onChange={(e) => setEditingAmountValue(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSaveEditedAmount(pay.id);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingPaymentId(null);
+                                    }
+                                  }}
+                                  className="w-24 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400"
+                                  placeholder="Số tiền..."
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditedAmount(pay.id)}
+                                  className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded cursor-pointer transition-colors"
+                                  title="Lưu số tiền"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingPaymentId(null)}
+                                  className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded cursor-pointer transition-colors"
+                                  title="Hủy"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  handleDeletePayment(pay.id);
-                                  setDeletePaymentConfirmId(null);
+                                  setEditingPaymentId(pay.id);
+                                  setEditingAmountValue(String(pay.amountPaid));
                                 }}
-                                className="text-[9px] font-bold text-white bg-rose-600 hover:bg-rose-500 px-1.5 py-0.2 rounded cursor-pointer"
+                                className="group/amount text-xs font-black text-emerald-400 hover:text-amber-300 font-mono shrink-0 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/60 px-2 py-0.5 rounded-md cursor-pointer transition-all flex items-center gap-1"
+                                title="Bấm vào đây để sửa số tiền thu"
                               >
-                                Xóa
+                                <span>{(pay.amountPaid).toLocaleString()}đ</span>
+                                <Edit3 className="w-3 h-3 text-slate-500 group-hover/amount:text-amber-400 transition-colors" />
                               </button>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-bold text-emerald-400 font-mono" title={`Tỷ lệ: ${pay.commissionRate ?? (pay.type === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate)}%`}>
+                              +{pay.commissionAmount.toLocaleString()}đ
+                            </span>
+                            {deletePaymentConfirmId === pay.id ? (
+                              <div className="flex items-center gap-1 bg-rose-950/80 border border-rose-800 rounded px-1 py-0.5 animate-fade-in">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleDeletePayment(pay.id);
+                                    setDeletePaymentConfirmId(null);
+                                  }}
+                                  className="text-[9px] font-bold text-white bg-rose-600 hover:bg-rose-500 px-1.5 py-0.2 rounded cursor-pointer"
+                                >
+                                  Xóa
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletePaymentConfirmId(null)}
+                                  className="text-[9px] font-semibold text-slate-400 hover:text-white px-1 py-0.2 rounded cursor-pointer"
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => setDeletePaymentConfirmId(null)}
-                                className="text-[9px] font-semibold text-slate-400 hover:text-white px-1 py-0.2 rounded cursor-pointer"
+                                onClick={() => setDeletePaymentConfirmId(pay.id)}
+                                className="text-slate-500 hover:text-rose-400 p-0.5 rounded hover:bg-slate-900 transition-colors cursor-pointer"
+                                title="Xóa bản ghi"
                               >
-                                Hủy
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setDeletePaymentConfirmId(pay.id)}
-                              className="text-slate-500 hover:text-rose-400 p-0.5 rounded hover:bg-slate-900 transition-colors cursor-pointer"
-                              title="Xóa bản ghi"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {(pay.note || pay.bienLaiId || pay.nguoiNop) && (
-                        <div className="text-[9.5px] text-slate-400 truncate flex items-center gap-2 pt-0.5 border-t border-slate-900">
-                          {pay.bienLaiId && <span className="font-mono text-amber-400 font-semibold">#{pay.bienLaiId}</span>}
-                          {pay.nguoiNop && <span>Nộp: <strong className="text-slate-300 font-normal">{pay.nguoiNop}</strong></span>}
-                          {pay.note && <span className="italic text-slate-400 truncate">"{pay.note}"</span>}
-                        </div>
-                      )}
-                    </div>
-                  ))
+                        {(pay.note || pay.bienLaiId || pay.nguoiNop || receiptUrl) && (
+                          <div className="text-[10px] text-slate-300 flex items-center justify-between gap-2 pt-1 border-t border-slate-900/80 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              {pay.bienLaiId && <span className="font-mono text-amber-400 font-bold bg-amber-950/60 border border-amber-900/60 px-1.5 py-0.2 rounded text-[9.5px]">#{pay.bienLaiId}</span>}
+                              {pay.nguoiNop && <span className="text-slate-400">Nộp: <strong className="text-slate-200 font-medium">{pay.nguoiNop}</strong></span>}
+                              {pay.note && (
+                                <span className="italic text-slate-300">
+                                  "{renderTextWithLinks(pay.note)}"
+                                </span>
+                              )}
+                            </div>
+
+                            {receiptUrl && (
+                              <a
+                                href={receiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="px-2 py-0.5 bg-sky-950/90 hover:bg-sky-900 text-sky-300 border border-sky-800/80 hover:border-sky-700 rounded text-[9.5px] font-extrabold flex items-center gap-1 shrink-0 transition-all cursor-pointer shadow-xs"
+                                title="Mở đường link biên lai e-PVI"
+                              >
+                                <ExternalLink className="w-3 h-3 text-sky-400" />
+                                <span>Xem biên lai</span>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

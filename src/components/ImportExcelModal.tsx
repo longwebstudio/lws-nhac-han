@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Customer, InsuranceType } from '../types';
 import { X, FileText, Upload, Copy, AlertCircle, CheckCircle, Database, Download } from 'lucide-react';
 import { getAutoCommissionRate } from '../lib/commission';
-import { parseJsonToCustomers } from '../lib/jsonParser';
+import { parseJsonToCustomers, parseExpiryDateStr } from '../lib/jsonParser';
 
 interface ImportExcelModalProps {
   onImport: (newCustomers: Customer[]) => void;
@@ -246,25 +246,7 @@ export default function ImportExcelModal({ onImport, onClose }: ImportExcelModal
         let parsedDate = '';
 
         if (rawExpiry) {
-          if (rawExpiry.includes('/')) {
-            const parts = rawExpiry.split('/');
-            if (parts.length === 3) {
-              const day = parts[0].padStart(2, '0');
-              const month = parts[1].padStart(2, '0');
-              const year = parts[2];
-              parsedDate = `${year}-${month}-${day}`;
-            } else if (parts.length === 2) {
-              // mm/yyyy format
-              const month = parseInt(parts[0], 10);
-              const year = parseInt(parts[1], 10);
-              if (!isNaN(month) && !isNaN(year)) {
-                const lastDay = new Date(year, month, 0).getDate();
-                parsedDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-              }
-            }
-          } else if (/^\d{4}-\d{2}-\d{2}$/.test(rawExpiry)) {
-            parsedDate = rawExpiry;
-          }
+          parsedDate = parseExpiryDateStr(rawExpiry, isBHXH);
         }
 
         list.push({

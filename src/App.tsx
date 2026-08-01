@@ -55,7 +55,23 @@ const normalizeGenderParam = (val: string | null): 'Nam' | 'Nữ' | undefined =>
 
 export default function App() {
   // core reactive states
-  const [view, setView] = useState<'landing' | 'dashboard'>('landing');
+  const [view, setView] = useState<'landing' | 'dashboard'>(() => {
+    try {
+      if (window.location.hash.includes('dashboard')) return 'dashboard';
+      const hasOpened = localStorage.getItem('lws_has_opened_book');
+      if (hasOpened === 'true') return 'dashboard';
+      const storedCustomers = localStorage.getItem('lws_customers');
+      if (storedCustomers !== null) {
+        const parsed = JSON.parse(storedCustomers);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return 'dashboard';
+        }
+      }
+    } catch (e) {
+      console.error('Error checking initial view:', e);
+    }
+    return 'landing';
+  });
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
 
@@ -188,6 +204,8 @@ export default function App() {
     try {
       let loadedCustomers: Customer[] = [];
       const storedCustomers = localStorage.getItem('lws_customers');
+      const hasOpenedBook = localStorage.getItem('lws_has_opened_book');
+
       if (storedCustomers !== null) {
         const parsed: Customer[] = JSON.parse(storedCustomers);
         // Filter out sample customer records if present from previous sessions
@@ -199,6 +217,12 @@ export default function App() {
 
       setCustomers(loadedCustomers);
       localStorage.setItem('lws_customers', JSON.stringify(loadedCustomers));
+
+      // Auto-enter dashboard if data exists or book was opened previously
+      if (hasOpenedBook === 'true' || loadedCustomers.length > 0 || storedCustomers !== null) {
+        setView('dashboard');
+        localStorage.setItem('lws_has_opened_book', 'true');
+      }
 
       // Check URL query parameters to add customer via URL (e.g. ?name=...&phone=...&code=...&expiryDate=...)
       try {
@@ -540,14 +564,14 @@ export default function App() {
         // Sort paymentHistory descending by date
         updatedHistory.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
 
-        // Update expiry dates (Do not overwrite existing non-empty expiry dates during import)
+        // Update expiry dates (use newer date if available)
         let mergedExpiryDate = existing.expiryDate;
         let mergedExpiryDateBHXH = existing.expiryDateBHXH;
         
-        if (!mergedExpiryDate && newCust.expiryDate) {
+        if (!mergedExpiryDate || (newCust.expiryDate && newCust.expiryDate > mergedExpiryDate)) {
           mergedExpiryDate = newCust.expiryDate;
         }
-        if (!mergedExpiryDateBHXH && newCust.expiryDateBHXH) {
+        if (!mergedExpiryDateBHXH || (newCust.expiryDateBHXH && newCust.expiryDateBHXH > mergedExpiryDateBHXH)) {
           mergedExpiryDateBHXH = newCust.expiryDateBHXH;
         }
 
@@ -599,6 +623,7 @@ export default function App() {
     setSettings(INITIAL_SETTINGS);
     localStorage.setItem('lws_customers', JSON.stringify([]));
     localStorage.setItem('lws_settings', JSON.stringify(INITIAL_SETTINGS));
+    localStorage.removeItem('lws_has_opened_book');
     setSyncStatus({
       type: 'success',
       message: '🗑️ Đã xóa toàn bộ dữ liệu danh sách người dân trên thiết bị về danh sách trống thành công!'
@@ -721,7 +746,10 @@ export default function App() {
       
       {/* View routing router */}
       {view === 'landing' ? (
-        <LandingPage onEnterApp={() => setView('dashboard')} />
+        <LandingPage onEnterApp={() => {
+          localStorage.setItem('lws_has_opened_book', 'true');
+          setView('dashboard');
+        }} />
       ) : (!wpUser && !isOfflineMode) ? (
         <WordPressAuth 
           onSuccess={(user) => {
@@ -785,7 +813,6 @@ export default function App() {
           settings={settings}
           onSave={handleSaveSettings}
           onClose={() => setIsSettingsOpen(false)}
-          onResetDemoData={handleResetDemoData}
           onExportData={() => {
             try {
               const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(customers, null, 2));

@@ -9,7 +9,8 @@ import {
   Users, Bell, Calendar, DollarSign, Search, Plus, 
   Settings, Download, Upload, RefreshCw, LogOut, Check, Copy, X,
   Cloud, AlertTriangle, UserCheck, Trash2, TrendingUp, BellRing, Sparkles, HelpCircle,
-  LayoutGrid, List, Share2, PhoneCall, Phone, HardDrive, Zap, ChevronDown, Clock, WifiOff, Smartphone
+  LayoutGrid, List, Share2, PhoneCall, Phone, HardDrive, Zap, ChevronDown, Clock, WifiOff, Smartphone, BarChart3,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Edit3, ExternalLink
 } from 'lucide-react';
 import QuickGuideModal from './QuickGuideModal';
 import TermsModal from './TermsModal';
@@ -93,7 +94,7 @@ interface DashboardProps {
   onOpenImport: () => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (customer: Customer) => void;
-  onResetDemoData: () => void;
+  onResetDemoData?: () => void;
   onGoBackLanding: () => void;
   onOpenSEOShare?: () => void;
   onOpenPricing?: () => void;
@@ -134,6 +135,81 @@ export default function Dashboard({
   const [filterReminder, setFilterReminder] = useState<'All' | 'NotReminded' | 'Reminded'>('All');
   const [filterPayer, setFilterPayer] = useState<string>('All');
   const [viewLayout, setViewLayout] = useState<'card' | 'table'>('card');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(12);
+
+  // Tự động về trang 1 khi thay đổi bộ lọc
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType, filterPeriod, filterStatus, filterReminder, filterPayer]);
+
+  // Quick payment amount editing state & link rendering helper
+  const [quickEditPayment, setQuickEditPayment] = useState<{
+    customer: Customer;
+    payment: any;
+    amountStr: string;
+  } | null>(null);
+
+  const handleSaveQuickEditAmount = () => {
+    if (!quickEditPayment) return;
+    const newAmount = Number(quickEditPayment.amountStr);
+    if (isNaN(newAmount) || newAmount < 0) {
+      setQuickEditPayment(null);
+      return;
+    }
+
+    const { customer, payment } = quickEditPayment;
+    const updatedHistory = (customer.paymentHistory || []).map(p => {
+      if (p.id === payment.id) {
+        const commRate = p.commissionRate ?? ((p.type || 'BHYT') === 'BHXH' ? settings.bhxhCommissionRate : settings.bhytCommissionRate);
+        const newComm = Math.round(newAmount * (commRate / 100));
+        return {
+          ...p,
+          amountPaid: newAmount,
+          commissionAmount: newComm
+        };
+      }
+      return p;
+    });
+
+    const updatedCustomer = {
+      ...customer,
+      paymentHistory: updatedHistory
+    };
+
+    onUpdateCustomer(updatedCustomer);
+    setQuickEditPayment(null);
+  };
+
+  const renderTextWithLinks = (text?: string, customLinkClass?: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    if (parts.length === 1) return text;
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={customLinkClass || "text-sky-400 hover:text-sky-300 underline font-semibold transition-colors cursor-pointer inline-flex items-center gap-0.5 break-all"}
+            title={`Mở trang biên lai e-PVI: ${part}`}
+          >
+            <span>{part}</span>
+            <span className="text-[9px] no-underline">↗</span>
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   // local notification template generator states
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -219,8 +295,9 @@ export default function Dashboard({
   const lastNotifiedCountRef = useRef(-1);
 
   // States for interactive monthly revenue chart
-  const [chartType, setChartType] = useState<'area' | 'bar'>('area');
+  const [chartType, setChartType] = useState<'area' | 'bar'>('bar');
   const [chartInsType, setChartInsType] = useState<'all' | 'BHYT' | 'BHXH'>('all');
+  const [selectedChartYear, setSelectedChartYear] = useState<number>(() => new Date().getFullYear());
 
   // Today's formatted date string (DD/MM/YYYY) for display
   const todayFormatted = useMemo(() => {
@@ -381,48 +458,69 @@ export default function Dashboard({
     return Array.from(payersSet).filter(Boolean).sort();
   }, [customers]);
 
-  // Tổng hợp doanh thu nộp phí theo tháng cho biểu đồ
+  // Danh sách các năm có trong dữ liệu giao dịch nộp phí
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    yearsSet.add(currentYear);
+    customers.forEach(cust => {
+      (cust.paymentHistory || []).forEach(pay => {
+        if (pay.paymentDate) {
+          const y = parseInt(pay.paymentDate.substring(0, 4), 10);
+          if (!isNaN(y) && y > 2000) {
+            yearsSet.add(y);
+          }
+        }
+      });
+    });
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [customers]);
+
+  // Tổng hợp doanh thu nộp phí 12 tháng trong năm được chọn cho biểu đồ cột
   const monthlyRevenueData = useMemo(() => {
-    const monthlyMap: { [key: string]: { key: string; monthLabel: string; monthFull: string; bhyt: number; bhxh: number; total: number } } = {};
+    const yearStr = String(selectedChartYear);
     
+    // Khởi tạo đầy đủ 12 tháng từ T1 đến T12
+    const monthsData = Array.from({ length: 12 }, (_, i) => {
+      const mNum = i + 1;
+      const monthStr = String(mNum).padStart(2, '0');
+      return {
+        key: `${yearStr}-${monthStr}`,
+        monthLabel: `T${mNum}`,
+        monthFull: `Tháng ${monthStr}/${yearStr}`,
+        bhyt: 0,
+        bhxh: 0,
+        total: 0
+      };
+    });
+
+    const monthMap = new Map(monthsData.map(m => [m.key, m]));
+
     customers.forEach(cust => {
       (cust.paymentHistory || []).forEach(pay => {
         if (!pay.paymentDate) return;
-        // Trích xuất YYYY-MM
-        const yearMonth = pay.paymentDate.substring(0, 7); 
-        if (!yearMonth || yearMonth.length < 7) return;
-        
-        const type = pay.type || 'BHYT';
-        const amount = pay.amountPaid || 0;
-        
-        if (!monthlyMap[yearMonth]) {
-          const parts = yearMonth.split('-');
-          const year = parts[0];
-          const month = parts[1];
-          monthlyMap[yearMonth] = {
-            key: yearMonth,
-            monthLabel: `T${month}/${year.substring(2)}`,
-            monthFull: `Tháng ${month}/${year}`,
-            bhyt: 0,
-            bhxh: 0,
-            total: 0
-          };
+        const yearMonth = pay.paymentDate.substring(0, 7);
+        if (monthMap.has(yearMonth)) {
+          const item = monthMap.get(yearMonth)!;
+          const amount = pay.amountPaid || 0;
+          const type = pay.type || 'BHYT';
+          if (type === 'BHXH') {
+            item.bhxh += amount;
+          } else {
+            item.bhyt += amount;
+          }
+          item.total += amount;
         }
-        
-        if (type === 'BHXH') {
-          monthlyMap[yearMonth].bhxh += amount;
-        } else {
-          monthlyMap[yearMonth].bhyt += amount;
-        }
-        monthlyMap[yearMonth].total += amount;
       });
     });
-    
-    // Sắp xếp các tháng theo thứ tự thời gian tăng dần
-    return Object.keys(monthlyMap)
-      .sort((a, b) => a.localeCompare(b))
-      .map(key => monthlyMap[key]);
-  }, [customers]);
+
+    return monthsData;
+  }, [customers, selectedChartYear]);
+
+  // Tổng doanh thu năm được chọn
+  const totalYearRevenue = useMemo(() => {
+    return monthlyRevenueData.reduce((sum, item) => sum + item.total, 0);
+  }, [monthlyRevenueData]);
 
   // filter implementation
   const filteredCustomers = useMemo(() => {
@@ -527,6 +625,31 @@ export default function Dashboard({
       return matchesSearch && matchesType && matchesStatus && matchesPeriod && matchesReminder && matchesPayer;
     });
   }, [customers, searchQuery, filterType, filterStatus, filterPeriod, filterReminder, filterPayer, getDaysDiff]);
+
+  // Phân trang danh sách người dân
+  const totalItems = filteredCustomers.length;
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedCustomers = useMemo(() => {
+    if (pageSize === 'all') return filteredCustomers;
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, safeCurrentPage, pageSize]);
+
+  // Dãy số trang hiển thị thông minh
+  const getPageNumbers = (current: number, total: number) => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   // Khách hàng phát CẢNH BÁO HẾT HẠN TRONG 7 NGÀY (hoặc quá hạn) CHƯA ĐƯỢC NHẮC HẠN
   const todayCustomers = useMemo(() => {
@@ -863,26 +986,7 @@ export default function Dashboard({
                       </div>
                     </button>
 
-                    {/* 2. Khôi phục mẫu */}
-                    <button
-                      onClick={() => {
-                        setIsSettingsMenuOpen(false);
-                        if (window.confirm('Bạn có chắc chắn muốn khôi phục 5 khách hàng mẫu ban đầu? Dữ liệu hiện tại sẽ được nạp lại mẫu.')) {
-                          onResetDemoData();
-                        }
-                      }}
-                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
-                    >
-                      <div className="p-1.5 bg-rose-950 border border-rose-800 rounded-lg text-rose-400 group-hover:scale-105 transition-transform shrink-0">
-                        <RefreshCw className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="block text-slate-200 group-hover:text-white">Khôi Phục Mẫu</span>
-                        <span className="block text-[10px] text-slate-400 font-normal">Nạp 5 khách hàng mẫu ban đầu</span>
-                      </div>
-                    </button>
-
-                    {/* 3. Sao lưu dự phòng */}
+                    {/* 2. Sao lưu dự phòng */}
                     <button
                       onClick={() => {
                         setIsSettingsMenuOpen(false);
@@ -1389,32 +1493,53 @@ export default function Dashboard({
 
         </div>
 
-        {/* THỐNG KÊ DOANH THU THU HỘ THEO THÁNG */}
+        {/* THỐNG KÊ DOANH THU THU HỘ THEO THÁNG - BIỂU ĐỒ CỘT (RECHARTS) */}
         <div id="revenue-chart-section" className="bg-slate-900 border border-slate-850 rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-4 max-w-full overflow-hidden min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/60 min-w-0">
             <div className="flex items-start gap-2.5 min-w-0">
-              <div className="p-2 bg-indigo-950/40 rounded-xl text-indigo-400 border border-indigo-900/40 mt-1 shrink-0">
-                <TrendingUp className="w-4 h-4" />
+              <div className="p-2 bg-emerald-950/50 rounded-xl text-emerald-400 border border-emerald-800/50 mt-0.5 shrink-0">
+                <BarChart3 className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap leading-tight">
-                  Biểu đồ Doanh thu nộp bảo hiểm theo tháng
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap leading-tight">
+                    Biểu đồ Cột Doanh Thu Thu Hộ Theo Tháng ({selectedChartYear})
+                  </h3>
+                  <span className="text-[11px] font-black text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-lg font-mono">
+                    Tổng năm: {totalYearRevenue.toLocaleString()}đ
+                  </span>
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5 leading-snug">
-                  Thống kê số tiền thu hộ đại lý tích lũy theo từng chu kỳ tháng cho BHYT và BHXH.
+                  Thống kê tổng số tiền thu được theo từng tháng trong năm giúp theo dõi hiệu quả kinh doanh đại lý.
                 </p>
               </div>
             </div>
 
             {/* Phím điều khiển biểu đồ */}
             <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {/* Select Year */}
+              <div className="flex items-center bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 shrink-0 gap-1.5">
+                <span className="text-[10px] text-slate-400 font-bold">Năm:</span>
+                <select
+                  value={selectedChartYear}
+                  onChange={(e) => setSelectedChartYear(Number(e.target.value))}
+                  className="bg-transparent text-[11px] font-extrabold text-white font-mono focus:outline-none cursor-pointer"
+                >
+                  {availableYears.map(year => (
+                    <option key={year} value={year} className="bg-slate-900 text-white font-mono">
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Lọc loại bảo hiểm */}
               <div className="flex bg-slate-950 p-0.5 rounded-lg text-[10px] font-bold border border-slate-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setChartInsType('all')}
                   className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    chartInsType === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    chartInsType === 'all' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Cả hai
@@ -1423,7 +1548,7 @@ export default function Dashboard({
                   type="button"
                   onClick={() => setChartInsType('BHYT')}
                   className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    chartInsType === 'BHYT' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    chartInsType === 'BHYT' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   BHYT
@@ -1432,7 +1557,7 @@ export default function Dashboard({
                   type="button"
                   onClick={() => setChartInsType('BHXH')}
                   className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    chartInsType === 'BHXH' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    chartInsType === 'BHXH' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   BHXH
@@ -1443,204 +1568,184 @@ export default function Dashboard({
               <div className="flex bg-slate-950 p-0.5 rounded-lg text-[10px] font-bold border border-slate-800 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setChartType('area')}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    chartType === 'area' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Vùng
-                </button>
-                <button
-                  type="button"
                   onClick={() => setChartType('bar')}
                   className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    chartType === 'bar' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    chartType === 'bar' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Cột
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartType('area')}
+                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                    chartType === 'area' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Vùng
                 </button>
               </div>
             </div>
           </div>
 
           {/* Vùng hiển thị Biểu đồ */}
-          {monthlyRevenueData.length > 0 ? (
-            <div className="space-y-4 min-w-0">
-              <div className="h-[220px] md:h-[260px] w-full select-none min-w-0 overflow-hidden relative">
-                <ResponsiveContainer width="100%" height="100%">
-                  {chartType === 'area' ? (
-                    <AreaChart
-                      data={monthlyRevenueData}
-                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="colorBHYT" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
-                        </linearGradient>
-                        <linearGradient id="colorBHXH" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35}/>
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0.05}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.25} />
-                      <XAxis 
-                        dataKey="monthLabel" 
-                        stroke="#64748b" 
-                        fontSize={10}
-                        fontWeight="bold"
-                        tickLine={false} 
-                        axisLine={false}
-                        dy={8}
+          <div className="space-y-4 min-w-0">
+            <div className="h-[230px] md:h-[270px] w-full select-none min-w-0 overflow-hidden relative">
+              <ResponsiveContainer width="100%" height="100%">
+                {chartType === 'bar' ? (
+                  <BarChart
+                    data={monthlyRevenueData}
+                    margin={{ top: 12, right: 10, left: -10, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                    <XAxis 
+                      dataKey="monthLabel" 
+                      stroke="#94a3b8" 
+                      fontSize={11}
+                      fontWeight="bold"
+                      tickLine={false} 
+                      axisLine={false}
+                      dy={8}
+                    />
+                    <YAxis 
+                      stroke="#94a3b8" 
+                      fontSize={10}
+                      fontWeight="bold"
+                      tickLine={false} 
+                      axisLine={false}
+                      tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${(v / 1000).toFixed(0)}k`}
+                      dx={-4}
+                    />
+                    <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50, outline: 'none' }} allowEscapeViewBox={{ x: false, y: false }} />
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36} 
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                    />
+                    {(chartInsType === 'all' || chartInsType === 'BHYT') && (
+                      <Bar 
+                        dataKey="bhyt" 
+                        name="Bảo hiểm Y tế (BHYT)" 
+                        fill="#10b981" 
+                        radius={chartInsType === 'all' ? [0, 0, 0, 0] : [6, 6, 0, 0]}
+                        maxBarSize={32}
+                        stackId={chartInsType === 'all' ? "1" : undefined}
                       />
-                      <YAxis 
-                        stroke="#64748b" 
-                        fontSize={9}
-                        fontWeight="bold"
-                        tickLine={false} 
-                        axisLine={false}
-                        tickFormatter={(v) => `${(v / 1000).toLocaleString()}k`}
-                        dx={-4}
+                    )}
+                    {(chartInsType === 'all' || chartInsType === 'BHXH') && (
+                      <Bar 
+                        dataKey="bhxh" 
+                        name="BHXH Tự nguyện (BHXH)" 
+                        fill="#6366f1" 
+                        radius={[6, 6, 0, 0]}
+                        maxBarSize={32}
+                        stackId={chartInsType === 'all' ? "1" : undefined}
                       />
-                      <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50, outline: 'none' }} allowEscapeViewBox={{ x: false, y: false }} />
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36} 
-                        iconType="circle"
-                        iconSize={8}
-                        wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                    )}
+                  </BarChart>
+                ) : (
+                  <AreaChart
+                    data={monthlyRevenueData}
+                    margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorBHYT" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                      </linearGradient>
+                      <linearGradient id="colorBHXH" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.05}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.25} />
+                    <XAxis 
+                      dataKey="monthLabel" 
+                      stroke="#94a3b8" 
+                      fontSize={11}
+                      fontWeight="bold"
+                      tickLine={false} 
+                      axisLine={false}
+                      dy={8}
+                    />
+                    <YAxis 
+                      stroke="#94a3b8" 
+                      fontSize={10}
+                      fontWeight="bold"
+                      tickLine={false} 
+                      axisLine={false}
+                      tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${(v / 1000).toFixed(0)}k`}
+                      dx={-4}
+                    />
+                    <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50, outline: 'none' }} allowEscapeViewBox={{ x: false, y: false }} />
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36} 
+                      iconType="circle"
+                      iconSize={8}
+                      wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                    />
+                    {(chartInsType === 'all' || chartInsType === 'BHYT') && (
+                      <Area 
+                        type="monotone" 
+                        dataKey="bhyt" 
+                        name="Bảo hiểm Y tế (BHYT)" 
+                        stroke="#10b981" 
+                        fillOpacity={1} 
+                        fill="url(#colorBHYT)" 
+                        strokeWidth={2}
+                        stackId={chartInsType === 'all' ? "1" : undefined}
                       />
-                      {(chartInsType === 'all' || chartInsType === 'BHYT') && (
-                        <Area 
-                          type="monotone" 
-                          dataKey="bhyt" 
-                          name="Bảo hiểm Y tế (BHYT)" 
-                          stroke="#10b981" 
-                          fillOpacity={1} 
-                          fill="url(#colorBHYT)" 
-                          strokeWidth={2}
-                          stackId={chartInsType === 'all' ? "1" : undefined}
-                        />
-                      )}
-                      {(chartInsType === 'all' || chartInsType === 'BHXH') && (
-                        <Area 
-                          type="monotone" 
-                          dataKey="bhxh" 
-                          name="BHXH Tự nguyện (BHXH)" 
-                          stroke="#6366f1" 
-                          fillOpacity={1} 
-                          fill="url(#colorBHXH)" 
-                          strokeWidth={2}
-                          stackId={chartInsType === 'all' ? "1" : undefined}
-                        />
-                      )}
-                    </AreaChart>
-                  ) : (
-                    <BarChart
-                      data={monthlyRevenueData}
-                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.25} />
-                      <XAxis 
-                        dataKey="monthLabel" 
-                        stroke="#64748b" 
-                        fontSize={10}
-                        fontWeight="bold"
-                        tickLine={false} 
-                        axisLine={false}
-                        dy={8}
+                    )}
+                    {(chartInsType === 'all' || chartInsType === 'BHXH') && (
+                      <Area 
+                        type="monotone" 
+                        dataKey="bhxh" 
+                        name="BHXH Tự nguyện (BHXH)" 
+                        stroke="#6366f1" 
+                        fillOpacity={1} 
+                        fill="url(#colorBHXH)" 
+                        strokeWidth={2}
+                        stackId={chartInsType === 'all' ? "1" : undefined}
                       />
-                      <YAxis 
-                        stroke="#64748b" 
-                        fontSize={9}
-                        fontWeight="bold"
-                        tickLine={false} 
-                        axisLine={false}
-                        tickFormatter={(v) => `${(v / 1000).toLocaleString()}k`}
-                        dx={-4}
-                      />
-                      <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50, outline: 'none' }} allowEscapeViewBox={{ x: false, y: false }} />
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36} 
-                        iconType="circle"
-                        iconSize={8}
-                        wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }}
-                      />
-                      {(chartInsType === 'all' || chartInsType === 'BHYT') && (
-                        <Bar 
-                          dataKey="bhyt" 
-                          name="Bảo hiểm Y tế (BHYT)" 
-                          fill="#10b981" 
-                          radius={chartInsType === 'all' ? [0, 0, 0, 0] : [4, 4, 0, 0]}
-                          maxBarSize={40}
-                          stackId={chartInsType === 'all' ? "1" : undefined}
-                        />
-                      )}
-                      {(chartInsType === 'all' || chartInsType === 'BHXH') && (
-                        <Bar 
-                          dataKey="bhxh" 
-                          name="BHXH Tự nguyện (BHXH)" 
-                          fill="#6366f1" 
-                          radius={[4, 4, 0, 0]}
-                          maxBarSize={40}
-                          stackId={chartInsType === 'all' ? "1" : undefined}
-                        />
-                      )}
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
-              </div>
+                    )}
+                  </AreaChart>
+                )}
+              </ResponsiveContainer>
+            </div>
 
-              {/* Chỉ số Phân tích */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-2">
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Tháng cao điểm nhất</span>
-                  <span className="text-xs font-black text-rose-400 block font-mono truncate">
-                    {(() => {
-                      if (!monthlyRevenueData.length) return 'N/A';
-                      const sorted = [...monthlyRevenueData].sort((a, b) => b.total - a.total);
-                      return `${sorted[0].monthFull} (${sorted[0].total.toLocaleString()}đ)`;
-                    })()}
-                  </span>
-                </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Trung bình / Tháng</span>
-                  <span className="text-xs font-black text-emerald-400 block font-mono truncate">
-                    {(() => {
-                      if (!monthlyRevenueData.length) return '0đ';
-                      const sum = monthlyRevenueData.reduce((tot, d) => tot + d.total, 0);
-                      return `${Math.round(sum / monthlyRevenueData.length).toLocaleString()}đ`;
-                    })()}
-                  </span>
-                </div>
-                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
-                  <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Tăng trưởng thu hộ</span>
-                  <span className="text-xs font-black text-indigo-400 block font-mono flex items-center justify-center gap-1 truncate">
-                    {(() => {
-                      if (monthlyRevenueData.length < 2) return 'Ổn định 0%';
-                      const last = monthlyRevenueData[monthlyRevenueData.length - 1].total;
-                      const prev = monthlyRevenueData[monthlyRevenueData.length - 2].total;
-                      if (!prev) return 'Mới';
-                      const pct = Math.round(((last - prev) / prev) * 100);
-                      return (
-                        <>
-                          <span className={pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                            {pct >= 0 ? '▲' : '▼'} {Math.abs(pct)}%
-                          </span>
-                          <span className="text-[9px] text-slate-500 font-normal">so tháng trước</span>
-                        </>
-                      );
-                    })()}
-                  </span>
-                </div>
+            {/* Chỉ số Phân tích Kinh doanh theo tháng */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-2">
+              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
+                <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Tháng cao điểm nhất ({selectedChartYear})</span>
+                <span className="text-xs font-black text-rose-400 block font-mono truncate">
+                  {(() => {
+                    const withRev = monthlyRevenueData.filter(d => d.total > 0);
+                    if (!withRev.length) return 'N/A';
+                    const sorted = [...withRev].sort((a, b) => b.total - a.total);
+                    return `${sorted[0].monthFull} (${sorted[0].total.toLocaleString()}đ)`;
+                  })()}
+                </span>
+              </div>
+              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
+                <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Trung bình / Tháng</span>
+                <span className="text-xs font-black text-emerald-400 block font-mono truncate">
+                  {(() => {
+                    const sum = monthlyRevenueData.reduce((tot, d) => tot + d.total, 0);
+                    return `${Math.round(sum / 12).toLocaleString()}đ`;
+                  })()}
+                </span>
+              </div>
+              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center space-y-0.5 min-w-0 overflow-hidden">
+                <span className="text-[9px] text-slate-400 font-extrabold uppercase block truncate">Tổng thu năm {selectedChartYear}</span>
+                <span className="text-xs font-black text-indigo-400 block font-mono truncate">
+                  {totalYearRevenue.toLocaleString()}đ
+                </span>
               </div>
             </div>
-          ) : (
-            <div className="bg-slate-950/45 border border-slate-850 rounded-xl p-8 text-center">
-              <span className="text-slate-400 text-xs italic">Chưa có lịch sử giao dịch nộp tiền để thống kê biểu đồ doanh thu.</span>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Dynamic reminder generation pane if clicked */}
@@ -1879,7 +1984,7 @@ export default function Dashboard({
         )}
 
         {/* Filtering & Roster Row Section */}
-        <div className="bg-slate-900 rounded-2xl border border-slate-850 shadow-xs overflow-hidden">
+        <div id="lws-roster-section" className="bg-slate-900 rounded-2xl border border-slate-850 shadow-xs overflow-hidden scroll-mt-20">
           
           {/* Filtering bar inside */}
           <div className="p-4 bg-slate-950/40 border-b border-slate-850 flex flex-col md:flex-row items-center gap-3 justify-between">
@@ -2014,7 +2119,7 @@ export default function Dashboard({
           </div>
 
           {/* Roster Container (Card layout or Table layout) */}
-          {filteredCustomers.length === 0 ? (
+          {totalItems === 0 ? (
             <div className="text-center py-16 px-4 space-y-3">
               <div className="w-12 h-12 bg-slate-955 rounded-full flex items-center justify-center mx-auto text-slate-600 border border-slate-850">
                 <Search className="w-6 h-6" />
@@ -2027,7 +2132,7 @@ export default function Dashboard({
           ) : viewLayout === 'card' ? (
             /* Card Grid Layout */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 p-4 bg-slate-950/20">
-              {filteredCustomers.map((cust) => {
+              {paginatedCustomers.map((cust) => {
                 const diffDaysBHYT = getDaysDiff(cust.expiryDate);
                 const diffDaysBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
 
@@ -2165,7 +2270,22 @@ export default function Dashboard({
                               latestBHYTPayment ? (
                                 <div className="flex items-center justify-between text-slate-300 font-mono">
                                   <span>Nộp BHYT gần nhất ({latestBHYTPayment.paymentDate}):</span>
-                                  <span className="font-bold text-emerald-400">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setQuickEditPayment({
+                                        customer: cust,
+                                        payment: latestBHYTPayment,
+                                        amountStr: String(latestBHYTPayment.amountPaid)
+                                      });
+                                    }}
+                                    className="font-bold text-emerald-400 hover:text-amber-300 flex items-center gap-1 bg-slate-950/80 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/60 px-1.5 py-0.5 rounded cursor-pointer transition-all"
+                                    title="Bấm vào đây để sửa số tiền thu"
+                                  >
+                                    <span>{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
+                                    <Edit3 className="w-2.5 h-2.5 text-slate-500 hover:text-amber-400" />
+                                  </button>
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-between text-slate-500 italic font-mono text-[9.5px]">
@@ -2179,7 +2299,22 @@ export default function Dashboard({
                               latestBHXHPayment ? (
                                 <div className="flex items-center justify-between text-slate-300 font-mono">
                                   <span>Nộp BHXH gần nhất ({latestBHXHPayment.paymentDate}):</span>
-                                  <span className="font-bold text-indigo-300">{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setQuickEditPayment({
+                                        customer: cust,
+                                        payment: latestBHXHPayment,
+                                        amountStr: String(latestBHXHPayment.amountPaid)
+                                      });
+                                    }}
+                                    className="font-bold text-indigo-300 hover:text-amber-300 flex items-center gap-1 bg-slate-950/80 hover:bg-slate-900 border border-slate-800/80 hover:border-amber-500/60 px-1.5 py-0.5 rounded cursor-pointer transition-all"
+                                    title="Bấm vào đây để sửa số tiền thu"
+                                  >
+                                    <span>{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
+                                    <Edit3 className="w-2.5 h-2.5 text-slate-500 hover:text-amber-400" />
+                                  </button>
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-between text-slate-500 italic font-mono text-[9.5px]">
@@ -2193,7 +2328,7 @@ export default function Dashboard({
                               <p className="truncate">📍 {cust.address}</p>
                             )}
                             {cust.notes && (
-                              <p className="italic text-slate-500 truncate">📝 {cust.notes}</p>
+                              <p className="italic text-slate-400">📝 {renderTextWithLinks(cust.notes)}</p>
                             )}
                           </div>
                         )}
@@ -2312,7 +2447,7 @@ export default function Dashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 text-xs bg-slate-900/.10 text-slate-300">
-                  {filteredCustomers.map((cust) => {
+                  {paginatedCustomers.map((cust) => {
                     const diffDaysBHYT = getDaysDiff(cust.expiryDate);
                     const diffDaysBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
                     
@@ -2450,7 +2585,22 @@ export default function Dashboard({
                               latestBHYTPayment ? (
                                 <div className="flex items-center gap-1.5 font-mono">
                                   <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-emerald-955 text-emerald-300 border border-emerald-900 select-none">BHYT</span>
-                                  <span className="font-mono text-emerald-400 font-extrabold">{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setQuickEditPayment({
+                                        customer: cust,
+                                        payment: latestBHYTPayment,
+                                        amountStr: String(latestBHYTPayment.amountPaid)
+                                      });
+                                    }}
+                                    className="font-mono text-emerald-400 hover:text-amber-300 font-extrabold flex items-center gap-1 bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/60 px-1.5 py-0.5 rounded cursor-pointer transition-all"
+                                    title="Bấm vào đây để sửa số tiền thu"
+                                  >
+                                    <span>{latestBHYTPayment.amountPaid.toLocaleString()}đ</span>
+                                    <Edit3 className="w-2.5 h-2.5 text-slate-500 hover:text-amber-400" />
+                                  </button>
                                 </div>
                               ) : (
                                 <div className="text-[10px] text-slate-500 italic font-mono">BHYT: Chưa đóng</div>
@@ -2461,7 +2611,22 @@ export default function Dashboard({
                               latestBHXHPayment ? (
                                 <div className="flex items-center gap-1.5 font-mono">
                                   <span className="px-1.5 py-0.2 rounded text-[7px] font-extrabold bg-indigo-950 text-indigo-300 border border-indigo-900 select-none">BHXH</span>
-                                  <span className="font-mono text-indigo-300 font-extrabold">{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setQuickEditPayment({
+                                        customer: cust,
+                                        payment: latestBHXHPayment,
+                                        amountStr: String(latestBHXHPayment.amountPaid)
+                                      });
+                                    }}
+                                    className="font-mono text-indigo-300 hover:text-amber-300 font-extrabold flex items-center gap-1 bg-slate-950/80 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/60 px-1.5 py-0.5 rounded cursor-pointer transition-all"
+                                    title="Bấm vào đây để sửa số tiền thu"
+                                  >
+                                    <span>{latestBHXHPayment.amountPaid.toLocaleString()}đ</span>
+                                    <Edit3 className="w-2.5 h-2.5 text-slate-500 hover:text-amber-400" />
+                                  </button>
                                 </div>
                               ) : (
                                 <div className="text-[10px] text-slate-500 italic font-mono">BHXH: Chưa đóng</div>
@@ -2576,18 +2741,118 @@ export default function Dashboard({
             </div>
           )}
 
-          {/* Table footer stats summary info */}
-          <div className="px-3 sm:px-6 py-3.5 bg-slate-950/50 border-t border-slate-850 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-2 min-w-0 max-w-full">
-            <p className="text-center sm:text-left">
-              Hiển thị <strong className="text-slate-200">{filteredCustomers.length}</strong> trên{' '}
-              <strong className="text-slate-200">{customers.length}</strong> tài liệu người dân.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-1 sm:gap-4 text-center sm:text-left min-w-0 max-w-full">
+          {/* Table footer stats summary info & Pagination */}
+          <div className="px-3 sm:px-6 py-4 bg-slate-950/80 border-t border-slate-850 flex flex-col md:flex-row justify-between items-center text-xs text-slate-400 gap-3 min-w-0 max-w-full">
+            
+            {/* Left: Filter count & Page size select */}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full md:w-auto">
+              <p className="text-center md:text-left">
+                Hiển thị <strong className="text-slate-100 font-mono">{totalItems === 0 ? 0 : (pageSize === 'all' ? 1 : (safeCurrentPage - 1) * pageSize + 1)}</strong> - <strong className="text-slate-100 font-mono">{pageSize === 'all' ? totalItems : Math.min(safeCurrentPage * pageSize, totalItems)}</strong> trong tổng <strong className="text-emerald-400 font-mono">{totalItems}</strong> người dân
+                {totalItems !== customers.length && <span className="text-slate-500"> (lọc từ {customers.length})</span>}
+              </p>
+
+              <div className="flex items-center gap-1.5 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-800">
+                <span className="text-[11px] text-slate-400 font-medium">Hiển thị/trang:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                    setPageSize(val);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-transparent text-[11px] font-bold text-emerald-400 focus:outline-none cursor-pointer font-mono"
+                >
+                  <option value={12} className="bg-slate-900 text-white">12 người</option>
+                  <option value={24} className="bg-slate-900 text-white">24 người</option>
+                  <option value={50} className="bg-slate-900 text-white">50 người</option>
+                  <option value={100} className="bg-slate-900 text-white">100 người</option>
+                  <option value="all" className="bg-slate-900 text-white">Tất cả</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Center/Right: Pagination Navigation Controls */}
+            {pageSize !== 'all' && totalPages > 1 && (
+              <div className="flex items-center gap-1 my-1 md:my-0 flex-wrap justify-center">
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === 1}
+                  onClick={() => {
+                    setCurrentPage(1);
+                    document.getElementById('lws-roster-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  title="Trang đầu"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === 1}
+                  onClick={() => {
+                    setCurrentPage(p => Math.max(1, p - 1));
+                    document.getElementById('lws-roster-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  title="Trang trước"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-1 mx-1">
+                  {getPageNumbers(safeCurrentPage, totalPages).map((p, idx) => (
+                    p === '...' ? (
+                      <span key={`dots-${idx}`} className="px-1.5 py-1 text-slate-500 font-mono text-xs">...</span>
+                    ) : (
+                      <button
+                        key={`page-${p}`}
+                        type="button"
+                        onClick={() => {
+                          setCurrentPage(Number(p));
+                          document.getElementById('lws-roster-section')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold cursor-pointer transition-all ${
+                          safeCurrentPage === p
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === totalPages}
+                  onClick={() => {
+                    setCurrentPage(p => Math.min(totalPages, p + 1));
+                    document.getElementById('lws-roster-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  title="Trang tiếp"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage === totalPages}
+                  onClick={() => {
+                    setCurrentPage(totalPages);
+                    document.getElementById('lws-roster-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  title="Trang cuối"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-1 sm:gap-4 text-center sm:text-left min-w-0">
               <span className="truncate max-w-[280px] sm:max-w-md" title={settings.agencyName}>
                 Đại lý: <strong className="text-emerald-400">{settings.agencyName}</strong>
-              </span>
-              <span className="shrink-0">
-                Hotline liên hệ: <strong className="text-emerald-400 font-mono">{settings.agentPhone}</strong>
               </span>
             </div>
           </div>
@@ -2641,6 +2906,74 @@ export default function Dashboard({
         isOpen={showPwaModal}
         onClose={() => setShowPwaModal(false)}
       />
+
+      {/* Quick Payment Amount Edit Modal */}
+      {quickEditPayment && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" onClick={() => setQuickEditPayment(null)}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4 text-slate-100" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-950 text-emerald-400 rounded-xl border border-emerald-800/60">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">Sửa Số Tiền Thu</h3>
+                  <p className="text-xs text-slate-400">{quickEditPayment.customer.fullName} - {quickEditPayment.payment.type || 'BHYT'} ({quickEditPayment.payment.paymentDate})</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickEditPayment(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-300 block">Số tiền thu mới (VNĐ):</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={quickEditPayment.amountStr}
+                  onChange={(e) => setQuickEditPayment({ ...quickEditPayment, amountStr: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveQuickEditAmount();
+                    }
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-sm text-emerald-400 font-mono font-bold focus:outline-none"
+                  placeholder="Nhập số tiền..."
+                  autoFocus
+                />
+                <span className="absolute right-3 top-2.5 text-xs font-mono text-slate-500 font-bold">VNĐ</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Tự động tính lại hoa hồng đại lý dựa trên tỷ lệ phần trăm đã cài đặt.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setQuickEditPayment(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveQuickEditAmount}
+                className="px-4 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-lg shadow-emerald-950/50 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Lưu Số Tiền</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

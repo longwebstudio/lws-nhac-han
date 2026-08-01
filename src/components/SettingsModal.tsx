@@ -14,7 +14,6 @@ interface SettingsModalProps {
   settings: UserSettings;
   onSave: (settings: UserSettings) => void;
   onClose: () => void;
-  onResetDemoData?: () => void;
   onExportData?: () => void;
   onOpenImport?: () => void;
   onOpenQuickGuide?: () => void;
@@ -25,7 +24,6 @@ export default function SettingsModal({
   settings,
   onSave,
   onClose,
-  onResetDemoData,
   onExportData,
   onOpenImport,
   onOpenQuickGuide,
@@ -165,28 +163,6 @@ export default function SettingsModal({
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              {onResetDemoData && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu danh sách người dân trên máy này về trạng thái trống?')) {
-                      onResetDemoData();
-                      onClose();
-                    }
-                  }}
-                  className="p-3 bg-slate-900 hover:bg-slate-850 text-rose-300 border border-slate-800 hover:border-rose-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
-                  title="Xóa trắng dữ liệu danh sách người dân cục bộ"
-                >
-                  <div className="p-1.5 bg-rose-950 text-rose-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
-                    <RefreshCcw className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="block text-slate-200 group-hover:text-white leading-tight">Xóa Dữ Liệu</span>
-                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Đặt lại danh sách rỗng</span>
-                  </div>
-                </button>
-              )}
-
               {onExportData && (
                 <button
                   type="button"
@@ -593,6 +569,9 @@ export default function SettingsModal({
                   <span className="text-xs font-semibold text-white">Tự động sao lưu dữ liệu lên WordPress hàng ngày</span>
                   <p className="text-xs text-slate-400">
                     Khi kích hoạt và đã đăng nhập tài khoản WordPress, ứng dụng sẽ tự động sao lưu đồng bộ dữ liệu lên cloud định kỳ mỗi ngày một lần khi bạn truy cập. Tránh rủi ro bị mất dữ liệu thiết bị.
+                  </p>
+                  <p className="text-[11px] text-amber-400 font-medium mt-1 flex items-center gap-1">
+                    <span>💡</span> <strong>Lưu ý:</strong> Nếu dùng nhiều thiết bị thì tắt tự động này.
                   </p>
                 </div>
               </label>

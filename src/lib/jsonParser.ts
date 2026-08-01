@@ -5,27 +5,62 @@
 
 import { Customer, PaymentHistory } from '../types';
 
-export const parseExpiryDateStr = (dateStr: string): string => {
+export const parseExpiryDateStr = (dateStr: string, isBHXH = false): string => {
   if (!dateStr) return '';
   const cleaned = String(dateStr).trim();
   if (!cleaned) return '';
+
+  let year = 0;
+  let month = 0;
+  let day = 0;
+
   if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
     const parts = cleaned.split('/');
-    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-  }
-  if (/^\d{1,2}\/\d{4}$/.test(cleaned)) {
+    day = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    year = parseInt(parts[2], 10);
+  } else if (/^\d{1,2}\/\d{4}$/.test(cleaned)) {
     const parts = cleaned.split('/');
-    const month = parseInt(parts[0], 10);
-    const year = parseInt(parts[1], 10);
-    if (!isNaN(month) && !isNaN(year)) {
-      const lastDay = new Date(year, month, 0).getDate();
-      return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    }
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    month = parseInt(parts[0], 10);
+    year = parseInt(parts[1], 10);
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    const parts = cleaned.split('-');
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    day = parseInt(parts[2], 10);
+  } else if (/^\d{4}-\d{2}$/.test(cleaned)) {
+    const parts = cleaned.split('-');
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+  } else {
     return cleaned;
   }
-  return cleaned;
+
+  if (isNaN(month) || isNaN(year) || month < 1 || month > 12) {
+    return cleaned;
+  }
+
+  if (isBHXH) {
+    // Với BHXH tự nguyện: Khách đóng đến tháng X -> Hạn đóng (chu kỳ đóng tiếp theo) là ngày cuối của tháng X + 1
+    let nextMonth = month + 1;
+    let nextYear = year;
+    if (nextMonth > 12) {
+      nextMonth = 1;
+      nextYear += 1;
+    }
+    const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+    return `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(lastDayOfNextMonth).padStart(2, '0')}`;
+  } else {
+    // Với BHYT: Nếu truyền ngày cụ thể thì giữ ngày, nếu chỉ có tháng/năm thì lấy ngày cuối tháng X
+    if (day > 0 && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(cleaned)) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    if (day > 0 && /^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    const lastDay = new Date(year, month, 0).getDate();
+    return `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  }
 };
 
 export const parseBirthdayStr = (birthdayStr: string): string => {
@@ -72,7 +107,7 @@ export function parseJsonToCustomers(items: any[], bhxhRate = 4.9, bhytRate = 2.
     const isBHYT = !isBHXH;
 
     const expiryRaw = item.den_thang_nam || item.ngay_het_han_bhyt || item.ngayDenHan || item.expiryDate || '';
-    const parsedExpiry = parseExpiryDateStr(expiryRaw);
+    const parsedExpiry = parseExpiryDateStr(expiryRaw, isBHXH);
 
     const birthdayRaw = item.ngay_sinh || item.birthday || item.ngaySinh || '';
     const parsedBirthday = parseBirthdayStr(birthdayRaw);
