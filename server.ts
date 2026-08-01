@@ -182,8 +182,40 @@ async function startServer() {
           if (cust.insuranceCodeBHXH) notesParts.push(`Mã BHXH: ${cust.insuranceCodeBHXH}`);
           if (cust.notes) notesParts.push(`Ghi chú: ${cust.notes}`);
 
+          // Helper to extract birth year from birthday string or 12-digit CCCD
+          const extractBirthYear = (birthday?: string, cccd?: string): string | null => {
+            if (birthday) {
+              const str = String(birthday).trim();
+              if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                return str.substring(0, 4);
+              }
+              const match = str.match(/\b(19\d\d|20\d\d)\b/);
+              if (match) return match[1];
+            }
+            if (cccd) {
+              const cleanCCCD = String(cccd).trim().replace(/\D/g, '');
+              if (cleanCCCD.length === 12) {
+                const genderCenturyDigit = parseInt(cleanCCCD[3], 10);
+                const yy = cleanCCCD.substring(4, 6);
+                let century = 1900;
+                if (genderCenturyDigit === 0 || genderCenturyDigit === 1) century = 1900;
+                else if (genderCenturyDigit === 2 || genderCenturyDigit === 3) century = 2000;
+                else if (genderCenturyDigit === 4 || genderCenturyDigit === 5) century = 2100;
+                const year = century + parseInt(yy, 10);
+                if (year >= 1920 && year <= 2030) return String(year);
+              }
+            }
+            return null;
+          };
+
+          const birthYear = extractBirthYear(cust.birthday, cust.cccd);
+          let givenName = (cust.name || "Người dân").trim();
+          if (birthYear && !givenName.includes(birthYear)) {
+            givenName = `${givenName} ${birthYear}`;
+          }
+
           const requestBody: any = {
-            names: [{ givenName: cust.name || "Người dân" }],
+            names: [{ givenName }],
           };
 
           if (cust.phone) {

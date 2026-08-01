@@ -200,6 +200,32 @@ export default function GoogleContactsModal({
     });
   };
 
+  // Helper extract birth year from birthday string or 12-digit CCCD
+  const extractBirthYear = (birthday?: string, cccd?: string): string | null => {
+    if (birthday) {
+      const str = String(birthday).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str.substring(0, 4);
+      }
+      const match = str.match(/\b(19\d\d|20\d\d)\b/);
+      if (match) return match[1];
+    }
+    if (cccd) {
+      const cleanCCCD = String(cccd).trim().replace(/\D/g, '');
+      if (cleanCCCD.length === 12) {
+        const genderCenturyDigit = parseInt(cleanCCCD[3], 10);
+        const yy = cleanCCCD.substring(4, 6);
+        let century = 1900;
+        if (genderCenturyDigit === 0 || genderCenturyDigit === 1) century = 1900;
+        else if (genderCenturyDigit === 2 || genderCenturyDigit === 3) century = 2000;
+        else if (genderCenturyDigit === 4 || genderCenturyDigit === 5) century = 2100;
+        const year = century + parseInt(yy, 10);
+        if (year >= 1920 && year <= 2030) return String(year);
+      }
+    }
+    return null;
+  };
+
   // Filter contacts by search for IMPORT
   const filteredImportContacts = contacts.filter(c => {
     const q = searchQuery.toLowerCase().trim();
@@ -693,7 +719,7 @@ export default function GoogleContactsModal({
                     <ArrowUpRight className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                     <div>
                       <strong>Tính năng Đồng bộ ngược:</strong> Đẩy danh sách người dân trong Sổ Thu lên Google Contacts. 
-                      Hệ thống sẽ tạo mới liên hệ trên Google với Họ tên, Số điện thoại, Địa chỉ, Ngày sinh và ghi chú Mã BHYT/BHXH/CCCD.
+                      Hệ thống tự động gắn thêm năm sinh sau Họ tên (ví dụ: "Nguyễn Văn A 1988"), kèm Số điện thoại, Địa chỉ, Ngày sinh và ghi chú Mã BHYT/BHXH/CCCD.
                     </div>
                   </div>
 
@@ -770,7 +796,14 @@ export default function GoogleContactsModal({
                                   />
                                 </td>
                                 <td className="p-3 font-semibold text-white">
-                                  <span>{cust.name}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span>{cust.name}</span>
+                                    {extractBirthYear(cust.birthday, cust.cccd) && (
+                                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20" title="Năm sinh sẽ đồng bộ vào sau tên trên Google Contacts">
+                                        {extractBirthYear(cust.birthday, cust.cccd)}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="p-3 font-mono text-slate-300">
                                   {cust.phone ? (
