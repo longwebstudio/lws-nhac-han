@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { UserSettings, CommissionMatrix } from '../types';
-import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle, Database, Copy, Check, Code } from 'lucide-react';
+import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle, Database, Copy, Check, Code, Trash2 } from 'lucide-react';
 import { INITIAL_SETTINGS } from '../mockData';
 import { DEFAULT_COMMISSION_MATRIX } from '../lib/commission';
 import { getStoredWordPressUrl, setStoredWordPressUrl, DEFAULT_ENDPOINT, WORDPRESS_PHP_CUSTOM_TABLE_CODE, WORDPRESS_SQL_CODE } from '../lib/graphql';
@@ -18,6 +18,7 @@ interface SettingsModalProps {
   onOpenImport?: () => void;
   onOpenQuickGuide?: () => void;
   onOpenSEOShare?: () => void;
+  onInitEmptyList?: () => void;
 }
 
 export default function SettingsModal({
@@ -27,7 +28,8 @@ export default function SettingsModal({
   onExportData,
   onOpenImport,
   onOpenQuickGuide,
-  onOpenSEOShare
+  onOpenSEOShare,
+  onInitEmptyList
 }: SettingsModalProps) {
   const [formData, setFormData] = useState<UserSettings>({
     ...settings,
@@ -44,6 +46,7 @@ export default function SettingsModal({
     setTimeout(() => setCopiedType(null), 2500);
   };
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showInitEmptyConfirm, setShowInitEmptyConfirm] = useState(false);
   const [activeCommissionTab, setActiveCommissionTab] = useState<'bhyt' | 'bhxh'>('bhyt');
 
   const currentMatrix = formData.commissionMatrix || DEFAULT_COMMISSION_MATRIX;
@@ -198,6 +201,23 @@ export default function SettingsModal({
                   <div>
                     <span className="block text-slate-200 group-hover:text-white leading-tight">Nhập Từ Excel</span>
                     <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Nạp dữ liệu từ file Excel</span>
+                  </div>
+                </button>
+              )}
+
+              {onInitEmptyList && (
+                <button
+                  type="button"
+                  onClick={() => setShowInitEmptyConfirm(true)}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-rose-300 border border-slate-800 hover:border-rose-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
+                  title="Xóa tất cả dữ liệu người dân và đưa về danh sách trống"
+                >
+                  <div className="p-1.5 bg-rose-950 text-rose-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Khởi Tạo D.Sách Trống</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Xóa toàn bộ dữ liệu</span>
                   </div>
                 </button>
               )}
@@ -858,6 +878,58 @@ export default function SettingsModal({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal Overlay for Initializing Empty List */}
+      {showInitEmptyConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-rose-900/60 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-400 rounded-xl shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Xác nhận khởi tạo danh sách trống</h3>
+                <p className="text-xs text-rose-400 font-medium">Hành động này sẽ xóa toàn bộ dữ liệu người dân</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Bạn có chắc chắn muốn xóa toàn bộ thông tin người dân hiện tại và đưa ứng dụng về danh sách trống không?
+            </p>
+
+            <div className="p-3 bg-rose-950/40 border border-rose-900/40 rounded-xl flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-rose-200/90 leading-tight">
+                <strong>Cảnh báo:</strong> Dữ liệu đã xóa không thể khôi phục tự động. Vui lòng đảm bảo bạn đã thực hiện sao lưu dự phòng nếu muốn giữ lại dữ liệu cũ.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowInitEmptyConfirm(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-750 transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowInitEmptyConfirm(false);
+                  onClose();
+                  if (onInitEmptyList) {
+                    onInitEmptyList();
+                  }
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all cursor-pointer shadow-lg shadow-rose-950/50 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Xóa & Khởi tạo trống
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

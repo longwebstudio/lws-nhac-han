@@ -826,6 +826,7 @@ export default function App() {
           }}
           onOpenImport={() => setIsImportOpen(true)}
           onOpenSEOShare={() => setIsSEOModalOpen(true)}
+          onInitEmptyList={handleResetDemoData}
         />
       )}
 
