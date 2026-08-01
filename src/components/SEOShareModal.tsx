@@ -74,12 +74,13 @@ export default function SEOShareModal({ agencyName, customerCount = 0, onClose }
     setTimeout(() => setCopiedKeyword(null), 2000);
   };
 
-  const appUrl = 'https://sothu.longwebstudio.io.vn/';
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://sothu.longwebstudio.io.vn';
+  const appUrl = typeof window !== 'undefined' && window.location.href ? window.location.href : 'https://sothu.longwebstudio.io.vn/';
   const displayAgency = agencyName || 'Đại Lý Thu BHXH, BHYT';
 
   const ogTitle = `LWS Sổ Thu Bảo Hiểm Online - Ứng Dụng Miễn Phí Nhắc Hạn BHYT & BHXH (${displayAgency})`;
   const ogDesc = `Ứng dụng Sổ Thu Bảo Hiểm Online miễn phí từ Freelancer Long Web Studio giúp Nhân viên thu BHXH, BHYT quản lý danh sách người dân, tự động tính giảm trừ hộ gia đình và gửi tin nhắn Zalo nhắc đáo hạn chỉ 3 giây!`;
-  const ogImage = DEFAULT_SEO.ogImage;
+  const ogImage = `${currentOrigin}/og-image.jpg`;
 
   const zaloPostText = `🎉 SỔ THU BẢO HIỂM ONLINE - ỨNG DỤNG MIỄN PHÍ DÀNH CHO NHÂN VIÊN THU BHYT & BHXH
 👉 Phát triển bởi Freelancer Long Web Studio giúp nhân viên thu nhắc hạn người tham gia tiện lợi!

@@ -15,6 +15,7 @@ import {
 import QuickGuideModal from './QuickGuideModal';
 import TermsModal from './TermsModal';
 import PWAInstallModal from './PWAInstallModal';
+import Expiring7DaysList from './Expiring7DaysList';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -92,6 +93,7 @@ interface DashboardProps {
   onBulkImport: (newCustomers: Customer[]) => void;
   onOpenSettings: () => void;
   onOpenImport: () => void;
+  onOpenGoogleContacts?: () => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (customer: Customer) => void;
   onResetDemoData?: () => void;
@@ -118,6 +120,7 @@ export default function Dashboard({
   onBulkImport,
   onOpenSettings,
   onOpenImport,
+  onOpenGoogleContacts,
   onOpenAddModal,
   onOpenEditModal,
   onResetDemoData,
@@ -1020,6 +1023,25 @@ export default function Dashboard({
                       </div>
                     </button>
 
+                    {/* 4.5. Đồng bộ Danh bạ Google */}
+                    {onOpenGoogleContacts && (
+                      <button
+                        onClick={() => {
+                          setIsSettingsMenuOpen(false);
+                          onOpenGoogleContacts();
+                        }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-850 transition-colors flex items-center gap-2.5 text-xs font-bold text-white group cursor-pointer"
+                      >
+                        <div className="p-1.5 bg-sky-950 border border-sky-800 rounded-lg text-sky-400 group-hover:scale-105 transition-transform shrink-0">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="block text-slate-200 group-hover:text-white">Danh Bạ Google</span>
+                          <span className="block text-[10px] text-slate-400 font-normal">Đồng bộ liên hệ Google Contacts</span>
+                        </div>
+                      </button>
+                    )}
+
                     {/* 5. Cài đặt Ứng Dụng PWA (Dùng Offline) */}
                     <button
                       onClick={() => {
@@ -1154,6 +1176,18 @@ export default function Dashboard({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {onOpenGoogleContacts && (
+              <button
+                type="button"
+                onClick={onOpenGoogleContacts}
+                className="px-3.5 py-2 text-xs font-bold text-sky-300 bg-sky-950/60 hover:bg-sky-900/80 border border-sky-800/80 hover:border-sky-700 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                title="Sao lưu dự phòng & Đồng bộ 2 chiều danh bạ qua Google Contacts API"
+              >
+                <Users className="w-3.5 h-3.5 text-sky-400" />
+                <span>Google Contacts Backup</span>
+              </button>
+            )}
+
             {wpUser ? (
               <>
                 {onCheckCloudVersion && (
@@ -1229,172 +1263,19 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* HỆ THỐNG THÔNG BÁO NHẮC HẠN TRÊN TRÌNH DUYỆT */}
-        <div className="bg-slate-900 border border-slate-850 rounded-2xl p-4 md:p-5 shadow-xl space-y-4">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-800/60">
-            <div className="flex items-start gap-2.5">
-              <div className="p-2 bg-amber-950/40 rounded-xl text-amber-400 border border-amber-900/40 mt-1 shrink-0">
-                <BellRing className="w-4 h-4 animate-bounce" />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5 flex-wrap">
-                  Thông báo Nhắc gia hạn Bảo hiểm
-                  <span className="text-[10px] bg-slate-950 border border-slate-800 text-amber-400 px-2 py-0.5 rounded-full font-mono font-bold">
-                    Hôm nay: {todayFormatted}
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Phát hiện khẩn cấp và đẩy thông báo nổi lên màn hình trình duyệt khi có thẻ tới hạn đóng phí trong ngày hôm nay.
-                </p>
-              </div>
-            </div>
-
-
-          </div>
-
-          {/* Alert list section */}
-          {todayCustomers.length > 0 ? (
-            <div className="space-y-2.5">
-              <div className="bg-amber-955/30 border border-amber-905 rounded-xl p-3 md:p-3.5 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-                <div className="space-y-0.5">
-                  <h4 className="text-xs font-black text-amber-300 uppercase tracking-wide">
-                    🚨 CẢNH BÁO HẾT HẠN (TRONG 7 NGÀY): CÓ {todayCustomers.length} NGƯỜI DÂN CHƯA NHẮC HẠN!
-                  </h4>
-                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                    Hệ thống tự động phát hiện các thẻ BHYT / BHXH sắp hết hạn trong 7 ngày tới (hoặc đã quá hạn) chưa gửi tin nhắn nhắc nhở. Nhấp gửi tin nhắn hoặc 'Đã nhắc' để tự động loại bỏ cảnh báo.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {todayCustomers.map(cust => {
-                  const diffBHYT = cust.hasBHYT !== false && cust.expiryDate ? getDaysDiff(cust.expiryDate) : null;
-                  const diffBHXH = cust.hasBHXH && cust.expiryDateBHXH ? getDaysDiff(cust.expiryDateBHXH) : null;
-
-                  const isBHYTWarning = diffBHYT !== null && diffBHYT <= 7;
-                  const isBHXHWarning = diffBHXH !== null && diffBHXH <= 7;
-
-                  return (
-                    <div key={cust.id} className="bg-slate-950 border border-slate-850/60 p-3.5 rounded-xl flex items-center justify-between gap-3 hover:border-amber-900/40 transition-colors">
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-extrabold text-sm text-white truncate max-w-[155px]">{cust.name}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopyCustomerDetails(cust, e)}
-                            className={`p-1 rounded transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-                              copiedCustId === cust.id
-                                ? 'text-emerald-400 bg-emerald-950/60 scale-90 border border-emerald-500/30'
-                                : 'text-slate-500 hover:text-emerald-400 hover:bg-slate-900'
-                            }`}
-                            title="Sao chép nhanh thông tin (Họ tên, Mã BHXH, Ngày sinh, Ghi chú)"
-                          >
-                            {copiedCustId === cust.id ? (
-                              <Check className="w-3.5 h-3.5 animate-pulse" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                          {cust.gender && (
-                            <span className={`text-[8px] px-1.5 py-0.2 rounded font-extrabold select-none ${cust.gender === 'Nam' ? 'bg-sky-950 text-sky-400 border border-sky-900/40' : 'bg-rose-950 text-rose-400 border border-rose-900/40'}`}>
-                              {cust.gender}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-1.5 font-sans">
-                          <span className="font-mono">SĐT: {cust.phone}</span>
-                          {cust.birthday && (
-                            <span className="text-[10px] text-slate-500 font-semibold bg-slate-900 border border-slate-850/40 px-1 py-0.2 rounded font-mono" title="Ngày tháng năm sinh">
-                              📅 {cust.birthday.includes('-') ? cust.birthday.split('-').reverse().join('/') : cust.birthday}
-                            </span>
-                          )}
-                          {cust.address && (
-                            <span className="text-[10px] text-slate-500 font-semibold bg-slate-900 border border-slate-850/40 px-1 py-0.5 rounded flex items-center gap-0.5" title="Địa chỉ">
-                              📍 {cust.address}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          {isBHYTWarning && diffBHYT !== null && (
-                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase border ${
-                              diffBHYT < 0
-                                ? 'bg-rose-950/60 text-rose-300 border-rose-900/60'
-                                : diffBHYT === 0
-                                ? 'bg-rose-950/40 text-rose-300 border-rose-900/50'
-                                : 'bg-amber-955/40 text-amber-300 border-amber-900/50'
-                            }`}>
-                              BHYT: {diffBHYT < 0 ? `Quá hạn ${-diffBHYT}d` : diffBHYT === 0 ? 'Hết hạn hôm nay' : `Còn ${diffBHYT} ngày`}
-                            </span>
-                          )}
-                          {isBHXHWarning && diffBHXH !== null && (
-                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase border ${
-                              diffBHXH < 0
-                                ? 'bg-rose-950/60 text-rose-300 border-rose-900/60'
-                                : diffBHXH === 0
-                                ? 'bg-rose-955/40 text-amber-300 border-rose-900/50'
-                                : 'bg-amber-955/40 text-amber-300 border-amber-900/50'
-                            }`}>
-                              BHXH: {diffBHXH < 0 ? `Quá hạn ${-diffBHXH}d` : diffBHXH === 0 ? 'Hết hạn hôm nay' : `Còn ${diffBHXH} ngày`}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isBHYTWarning && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveReminderCust(cust);
-                              setActiveReminderChannel('Zalo');
-                              setReminderInsType('BHYT');
-                              scrollToReminderPanel();
-                            }}
-                            className="text-[10px] font-extrabold px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
-                          >
-                            Nhắc BHYT
-                          </button>
-                        )}
-                        {isBHXHWarning && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveReminderCust(cust);
-                              setActiveReminderChannel('Zalo');
-                              setReminderInsType('BHXH');
-                              scrollToReminderPanel();
-                            }}
-                            className="text-[10px] font-extrabold px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all cursor-pointer shadow-xs active:scale-95"
-                          >
-                            Nhắc BHXH
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => handleMarkAsReminded(cust, e)}
-                          className="text-[10px] font-bold px-2 py-1.5 bg-slate-900 hover:bg-emerald-950/80 text-slate-300 hover:text-emerald-300 border border-slate-800 hover:border-emerald-700/60 rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                          title="Đánh dấu đã nhắc hạn (loại bỏ cảnh báo)"
-                        >
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span>Đã nhắc</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-4 text-center">
-              <div className="text-slate-400 text-xs flex items-center justify-center gap-2 select-none">
-                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0" />
-                <span>Không có cảnh báo nào trong 7 ngày tới chưa nhắc. Tất cả thẻ hết hạn đều đã được nhắc nhở đầy đủ!</span>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* DANH SÁCH KHÁCH HÀNG HẾT HẠN TRONG 7 NGÀY TỚI (CÓ NÚT BẤM NHANH GỬI ZALO/SMS) */}
+        <Expiring7DaysList
+          customers={customers}
+          settings={settings}
+          onUpdateCustomer={onUpdateCustomer}
+          onMarkAsReminded={handleMarkAsReminded}
+          onOpenReminderPanel={(cust, channel, insType) => {
+            setActiveReminderCust(cust);
+            setActiveReminderChannel(channel);
+            setReminderInsType(insType);
+            scrollToReminderPanel();
+          }}
+        />
 
         {/* Statistics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">

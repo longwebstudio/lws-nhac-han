@@ -198,7 +198,6 @@ export function parseJsonToCustomers(items: any[], bhxhRate = 4.9, bhytRate = 2.
       cccd,
       insuranceCode: isBHYT ? codeValue : codeValue,
       insuranceCodeBHXH: isBHXH ? codeValue : undefined,
-      type: isBHXH ? 'BHXH' : 'BHYT',
       hasBHYT: !isBHXH,
       hasBHXH: isBHXH,
       expiryDate: isBHYT ? parsedExpiry : '',

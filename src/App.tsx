@@ -23,6 +23,7 @@ import {
 import { updateSEOTags } from './lib/seo';
 import SEOShareModal from './components/SEOShareModal';
 import PricingModal from './components/PricingModal';
+import GoogleContactsModal from './components/GoogleContactsModal';
 
 import { getAutoCommissionRate } from './lib/commission';
 import { parseJsonToCustomers } from './lib/jsonParser';
@@ -101,6 +102,7 @@ export default function App() {
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isSEOModalOpen, setIsSEOModalOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isGoogleContactsOpen, setIsGoogleContactsOpen] = useState(false);
 
   const handleSelectPlan = (plan: 'offline' | 'online_pro') => {
     setCurrentPlan(plan);
@@ -777,6 +779,7 @@ export default function App() {
           onBulkImport={handleBulkImport}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenImport={() => setIsImportOpen(true)}
+          onOpenGoogleContacts={() => setIsGoogleContactsOpen(true)}
           onOpenAddModal={() => setIsAddCustomerOpen(true)}
           onOpenEditModal={(cust) => setSelectedEditCustomer(cust)}
           onResetDemoData={handleResetDemoData}
@@ -825,8 +828,19 @@ export default function App() {
             }
           }}
           onOpenImport={() => setIsImportOpen(true)}
+          onOpenGoogleContacts={() => setIsGoogleContactsOpen(true)}
           onOpenSEOShare={() => setIsSEOModalOpen(true)}
           onInitEmptyList={handleResetDemoData}
+        />
+      )}
+
+      {/* Google Contacts Sync Modal */}
+      {isGoogleContactsOpen && (
+        <GoogleContactsModal
+          isOpen={isGoogleContactsOpen}
+          onClose={() => setIsGoogleContactsOpen(false)}
+          existingCustomers={customers}
+          onImport={handleBulkImport}
         />
       )}
 

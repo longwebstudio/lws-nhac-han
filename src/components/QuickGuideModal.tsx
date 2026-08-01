@@ -115,10 +115,11 @@ export default function QuickGuideModal({ isOpen, onClose, onEnterApp }: QuickGu
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2">
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                    <Check className="w-4 h-4 text-emerald-400" /> 1.1 Kết Nối Cloud Tự Động
+                    <Check className="w-4 h-4 text-emerald-400" /> 1.1 Phương Thức Sao Lưu Cloud & Google
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Bấm nút <strong className="text-white">Đăng nhập WordPress</strong> ở góc trên. Nhập URL trang web, tên người dùng và Mật khẩu ứng dụng. Dữ liệu sẽ tự động sao lưu an toàn định kỳ mỗi ngày 1 lần.
+                    • <strong className="text-white">WordPress Cloud:</strong> Bấm <strong className="text-white">Kết Nối WPGraphQL</strong> để sao lưu cơ sở dữ liệu vĩnh viễn lên máy chủ trang web WordPress của đại lý.<br />
+                    • <strong className="text-white">Google Contacts:</strong> Bấm <strong className="text-sky-300">Google Contacts Backup</strong> để sao lưu dự phòng & đồng bộ 2 chiều liên hệ người dân sang Google Account.
                   </p>
                 </div>
 

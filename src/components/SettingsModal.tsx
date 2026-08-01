@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { UserSettings, CommissionMatrix } from '../types';
-import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle, Database, Copy, Check, Code, Trash2 } from 'lucide-react';
+import { X, Save, AlertCircle, RotateCcw, Globe, Percent, Table, Sparkles, RefreshCcw, Download, Upload, Share2, FileSpreadsheet, HelpCircle, Database, Copy, Check, Code, Trash2, Users } from 'lucide-react';
 import { INITIAL_SETTINGS } from '../mockData';
 import { DEFAULT_COMMISSION_MATRIX } from '../lib/commission';
 import { getStoredWordPressUrl, setStoredWordPressUrl, DEFAULT_ENDPOINT, WORDPRESS_PHP_CUSTOM_TABLE_CODE, WORDPRESS_SQL_CODE } from '../lib/graphql';
@@ -19,6 +19,7 @@ interface SettingsModalProps {
   onOpenQuickGuide?: () => void;
   onOpenSEOShare?: () => void;
   onInitEmptyList?: () => void;
+  onOpenGoogleContacts?: () => void;
 }
 
 export default function SettingsModal({
@@ -29,7 +30,8 @@ export default function SettingsModal({
   onOpenImport,
   onOpenQuickGuide,
   onOpenSEOShare,
-  onInitEmptyList
+  onInitEmptyList,
+  onOpenGoogleContacts
 }: SettingsModalProps) {
   const [formData, setFormData] = useState<UserSettings>({
     ...settings,
@@ -201,6 +203,26 @@ export default function SettingsModal({
                   <div>
                     <span className="block text-slate-200 group-hover:text-white leading-tight">Nhập Từ Excel</span>
                     <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Nạp dữ liệu từ file Excel</span>
+                  </div>
+                </button>
+              )}
+
+              {onOpenGoogleContacts && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenGoogleContacts();
+                  }}
+                  className="p-3 bg-slate-900 hover:bg-slate-850 text-sky-300 border border-slate-800 hover:border-sky-800/80 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer group text-left"
+                  title="Đồng bộ danh sách người dân từ tài khoản Google Contacts"
+                >
+                  <div className="p-1.5 bg-sky-950 text-sky-400 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="block text-slate-200 group-hover:text-white leading-tight">Google Contacts</span>
+                    <span className="block text-[9px] text-slate-400 font-normal mt-0.5">Đồng bộ danh bạ Google</span>
                   </div>
                 </button>
               )}
